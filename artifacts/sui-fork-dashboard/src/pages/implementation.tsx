@@ -136,7 +136,7 @@ EOF
 echo "Halving logic added ✅"`,
       },
       {
-        title: "Step 2.4 — Gas Fee Split: 72% Validators / 18% Treasury / 10% Burn",
+        title: "Step 2.4 — Gas Fee Split: 22% Node / 30% Validators / 20% Delegators / 18% Treasury / 10% Burn",
         file: "crates/sui-types/src/sui_system_state/",
         description: "Gas fee ko teen parts mein baanto — validators, treasury, aur burn",
         code: `cd ~/zebvix-node
@@ -149,9 +149,12 @@ grep -rl "gas_fee\|gas_revenue\|storage_fund" crates/ --include="*.rs" | \\
 cat >> crates/sui-types/src/gas_coin.rs << 'EOF'
 
 // ── Gas Fee Split Constants (total = 10000 bps = 100%) ──────
-pub const GAS_VALIDATOR_BPS: u64   = 7200;  // 72% to all validators
-pub const GAS_TREASURY_BPS: u64    = 1800;  // 18% to founder treasury
-pub const GAS_BURN_BPS: u64        = 1000;  // 10% burned forever 🔥
+pub const GAS_NODE_BPS: u64       = 2200;  // 22% → node runners (jo node chalate hain)
+pub const GAS_VALIDATOR_BPS: u64  = 3000;  // 30% → validators (staking reward)
+pub const GAS_DELEGATOR_BPS: u64  = 2000;  // 20% → delegators
+pub const GAS_TREASURY_BPS: u64   = 1800;  // 18% → founder treasury
+pub const GAS_BURN_BPS: u64       = 1000;  // 10% → burned forever 🔥
+// 2200 + 3000 + 2000 + 1800 + 1000 = 10000 ✓
 
 // Validator max reward per epoch (halving applies)
 pub const VALIDATOR_MAX_REWARD_MIST: u64 = 1_000_000_000_000; // 1,000 ZBX

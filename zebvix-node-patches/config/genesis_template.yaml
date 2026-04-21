@@ -30,8 +30,10 @@ epoch-duration-hours: 24
 initial-block-reward-mist: 100000000   # 0.1 ZBX
 
 # ── Gas fee split ──
-gas-validator-bps: 7200   # 72%
-gas-treasury-bps:  1800   # 18%
+gas-node-bps:      2200   # 22% → node runners
+gas-validator-bps: 3000   # 30% → validators
+gas-delegator-bps: 2000   # 20% → delegators
+gas-treasury-bps:  1800   # 18% → founder treasury
 gas-burn-bps:      1000   # 10%
 
 # ── Burn cap ──

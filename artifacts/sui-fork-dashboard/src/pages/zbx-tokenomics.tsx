@@ -181,9 +181,11 @@ fn calculate_node_runner_reward(total_minted: u64) -> u64 {
         <div className="p-5 rounded-lg bg-card border border-border space-y-3">
           <div className="text-sm font-semibold mb-3">Transaction Fee Distribution (per txn)</div>
           {[
-            { label: "Validators (80% of 90%)", pct: 72, color: "bg-primary",     value: "72%" },
-            { label: "Founder Treasury (20% of 90%)", pct: 18, color: "bg-blue-500",    value: "18%" },
-            { label: "Burned forever 🔥",       pct: 10, color: "bg-red-500",     value: "10%" },
+            { label: "Node Runners",    pct: 22, color: "bg-cyan-500",   value: "22%" },
+            { label: "Validators",      pct: 30, color: "bg-primary",    value: "30%" },
+            { label: "Delegators",      pct: 20, color: "bg-pink-500",   value: "20%" },
+            { label: "Founder Treasury",pct: 18, color: "bg-blue-500",   value: "18%" },
+            { label: "Burned forever 🔥",pct: 10, color: "bg-red-500",   value: "10%" },
           ].map(({ label, pct, color, value }) => (
             <div key={label} className="space-y-1">
               <div className="flex justify-between text-xs">
@@ -200,9 +202,10 @@ fn calculate_node_runner_reward(total_minted: u64) -> u64 {
         <CodeBlock language="rust" code={`// In gas fee distribution function:
 // crates/sui-types/src/sui_system_state/sui_system_state_inner_v1.rs
 
-const BURN_BPS: u64         = 1000;  // 10% burned 🔥
-const VALIDATOR_BPS: u64    = 7200;  // 72% to validators (80% of 90%)
-const TREASURY_BPS: u64     = 1800;  // 18% to treasury (20% of 90%)
+const GAS_NODE_BPS: u64      = 2200;  // 22% → node runners
+const GAS_VALIDATOR_BPS: u64 = 3000;  // 30% → validators
+const GAS_DELEGATOR_BPS: u64 = 2000;  // 20% → delegators
+const GAS_TREASURY_BPS: u64  = 1800;  // 18% → founder treasury (20% of 90%)
 // Total = 10000 bps = 100%
 
 fn distribute_gas_fees(
@@ -221,14 +224,24 @@ fn distribute_gas_fees(
     let burn_coin = coin::take(&mut fee_pool, burn_amount, ctx);
     coin::burn(burn_treasury_cap, burn_coin); // permanently removed from supply
 
-    // 3. Split 72% equally among all active validators
+    // 3. Distribute 22% to active node runners
+    let per_node = node_amount / (node_runners.len() as u64);
+    for node in node_runners {
+        let reward = coin::take(&mut fee_pool, per_node, ctx);
+        transfer::public_transfer(reward, node.wallet_address);
+    }
+
+    // 4. Split 30% among all active validators (staking reward)
     let per_validator = validator_amount / (validators.len() as u64);
     for validator in validators {
         let reward = coin::take(&mut fee_pool, per_validator, ctx);
         transfer::public_transfer(reward, validator.sui_address);
     }
 
-    // 4. Send 18% to founder treasury
+    // 5. Split 20% proportionally among delegators
+    // (handled by staking_pool.move — distributed via claim_delegation_rewards)
+
+    // 6. Send 18% to founder treasury
     let treasury_coin = coin::take(&mut fee_pool, treasury_amount, ctx);
     transfer::public_transfer(treasury_coin, treasury_addr);
 }`} />
@@ -348,8 +361,10 @@ fn mint_zbx(
                 ["Block reward (genesis)", "0.1 ZBX → treasury", "Rust — block processing"],
                 ["Validator stake req", "10,000 ZBX min", "genesis.yaml"],
                 ["Validator max reward", "1,000 ZBX/epoch (halving applies)", "Rust — reward cap"],
-                ["Gas → validators", "72% (80% of 90%)", "Rust — gas distribution"],
-                ["Gas → treasury", "18% (20% of 90%)", "Rust — gas distribution"],
+                ["Gas → node runners", "22% (sirf node chalane wale)", "Rust — gas distribution"],
+                ["Gas → validators", "30% (staking reward)", "Rust — gas distribution"],
+                ["Gas → delegators", "20% (proportional)", "Rust — gas distribution"],
+                ["Gas → treasury", "18% (founder treasury)", "Rust — gas distribution"],
                 ["Gas → burn", "10% permanently destroyed 🔥", "Rust — gas distribution"],
                 ["Node runner reward", "5 ZBX/day (halving applies)", "Move contract"],
                 ["Node runner pool cap", "4,000 ZBX/day total", "Move contract"],
@@ -376,7 +391,7 @@ fn mint_zbx(
             { step: "2", label: "EVM 20-byte address (sui-types)", type: "Full rebuild", color: "yellow" },
             { step: "3", label: "MAX_TOTAL_SUPPLY hard cap in mint function", type: "Full rebuild", color: "yellow" },
             { step: "4", label: "Halving multiplier in reward module", type: "Full rebuild", color: "yellow" },
-            { step: "5", label: "Gas fee split: 72% val / 18% treasury / 10% burn", type: "Full rebuild", color: "yellow" },
+            { step: "5", label: "Gas fee split: 22% node / 30% val / 20% del / 18% treasury / 10% burn", type: "Full rebuild", color: "yellow" },
             { step: "6", label: "Block reward 0.1 ZBX → treasury per block", type: "Full rebuild", color: "yellow" },
             { step: "7", label: "Node runner 5 ZBX/day Move contract", type: "Deploy contract", color: "green" },
             { step: "8", label: "Delegator reward contract", type: "Deploy contract", color: "green" },

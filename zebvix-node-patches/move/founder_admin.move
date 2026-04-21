@@ -52,9 +52,11 @@ module zebvix::founder_admin {
     // MAX_BURN_SUPPLY_ZBX  = 75_000_000           ← IMMUTABLE
     // MAX_VALIDATORS       = 41                   ← IMMUTABLE
     // SUI_ADDRESS_LENGTH   = 20                   ← IMMUTABLE
-    // GAS_BURN_BPS         = 1000                 ← IMMUTABLE
-    // GAS_VALIDATOR_BPS    = 7200                 ← IMMUTABLE
-    // GAS_TREASURY_BPS     = 1800                 ← IMMUTABLE
+    // GAS_NODE_BPS          = 2200                 ← IMMUTABLE (22% node runners)
+    // GAS_VALIDATOR_BPS     = 3000                 ← IMMUTABLE (30% validators)
+    // GAS_DELEGATOR_BPS     = 2000                 ← IMMUTABLE (20% delegators)
+    // GAS_TREASURY_BPS      = 1800                 ← IMMUTABLE (18% founder treasury)
+    // GAS_BURN_BPS          = 1000                 ← IMMUTABLE (10% burn)
     // MANUAL_LIQUIDITY     = DISABLED             ← IMMUTABLE
 
     // ── Initialize (genesis) ──

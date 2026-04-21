@@ -43,9 +43,12 @@ pub const SECOND_HALVING_ZBX: u64 = 100_000_000;
 pub const INITIAL_BLOCK_REWARD_MIST: u64 = 100_000_000; // 0.1 ZBX per block
 
 /// Gas fee distribution (basis points, must sum to 10000)
-pub const GAS_VALIDATOR_BPS: u64 = 7200; // 72% → active validators
-pub const GAS_TREASURY_BPS:  u64 = 1800; // 18% → founder treasury
-pub const GAS_BURN_BPS:      u64 = 1000; // 10% → burn (until cap)
+pub const GAS_NODE_BPS:       u64 = 2200; // 22% → node runners (jo node chalate hain)
+pub const GAS_VALIDATOR_BPS:  u64 = 3000; // 30% → validators (staking reward)
+pub const GAS_DELEGATOR_BPS:  u64 = 2000; // 20% → delegators
+pub const GAS_TREASURY_BPS:   u64 = 1800; // 18% → founder treasury
+pub const GAS_BURN_BPS:       u64 = 1000; // 10% → burn (until cap)
+// Sanity: 2200 + 3000 + 2000 + 1800 + 1000 = 10000 ✓
 
 /// Burn cap: 50% of max supply = 75 million ZBX
 pub const MAX_BURN_SUPPLY_ZBX:  u64 = 75_000_000;
@@ -97,20 +100,24 @@ pub fn adjusted_block_reward(total_minted_zbx: u64) -> u64 {
     INITIAL_BLOCK_REWARD_MIST / get_halving_multiplier(total_minted_zbx)
 }
 
-/// Gas fee split for a given fee amount (returns validator_share, treasury_share, burn_share)
-pub fn split_gas_fee(fee_mist: u64, total_burned_mist: u64) -> (u64, u64, u64) {
+/// Gas fee split for a given fee amount
+/// Returns (node_share, validator_share, delegator_share, treasury_share, burn_share)
+pub fn split_gas_fee(fee_mist: u64, total_burned_mist: u64) -> (u64, u64, u64, u64, u64) {
+    let node_share      = fee_mist * GAS_NODE_BPS      / 10_000;
     let validator_share = fee_mist * GAS_VALIDATOR_BPS / 10_000;
+    let delegator_share = fee_mist * GAS_DELEGATOR_BPS / 10_000;
     let treasury_share  = fee_mist * GAS_TREASURY_BPS  / 10_000;
     let burn_raw        = fee_mist * GAS_BURN_BPS       / 10_000;
 
     // If burn cap reached, redirect burn share to validators
+    // If burn cap reached, redirect burn share to validators
     let (burn_share, validator_final) = if is_burn_allowed(total_burned_mist) {
         (burn_raw, validator_share)
     } else {
-        (0, validator_share + burn_raw) // burn cap hit → all to validators
+        (0, validator_share + burn_raw) // burn cap hit → burn share added to validators
     };
 
-    (validator_final, treasury_share, burn_share)
+    (node_share, validator_final, delegator_share, treasury_share, burn_share)
 }
 
 /// Check if validator slot limit is reached

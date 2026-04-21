@@ -19,7 +19,9 @@ interface EconomicParams {
   nodeRunnerDailyReward: number;
   nodeRunnerPoolCap: number;
   delegatorBaseRate: number;
+  gasNodePct: number;
   gasValidatorPct: number;
+  gasDelegatorPct: number;
   gasTreasuryPct: number;
   gasBurnPct: number;
   maxBurnPct: number;
@@ -44,7 +46,9 @@ const DEFAULTS: EconomicParams = {
   nodeRunnerDailyReward: 5,
   nodeRunnerPoolCap: 4_000,
   delegatorBaseRate: 8,
-  gasValidatorPct: 72,
+  gasNodePct: 22,
+  gasValidatorPct: 30,
+  gasDelegatorPct: 20,
   gasTreasuryPct: 18,
   gasBurnPct: 10,
   maxBurnPct: 50,
@@ -131,7 +135,7 @@ export default function EconomicDesign() {
     const totalDays = phase1Days + phase2Days + phase3Days;
     const totalYears = totalDays / 365;
 
-    const gasBurnCheck = p.gasValidatorPct + p.gasTreasuryPct + p.gasBurnPct;
+    const gasBurnCheck = p.gasNodePct + p.gasValidatorPct + p.gasDelegatorPct + p.gasTreasuryPct + p.gasBurnPct;
     const maxBurnZBX = Math.floor(p.maxSupply * (p.maxBurnPct / 100));
     const afterBurnValidatorPct = p.gasValidatorPct + p.gasBurnPct;
 
@@ -357,7 +361,9 @@ export default function EconomicDesign() {
                 Total: {computed.gasBurnCheck}% {computed.isValidFee ? "✓" : "≠ 100%"}
               </span>
             </h3>
-            <NumInput label="Validators Share" value={p.gasValidatorPct} onChange={v => update("gasValidatorPct", v)} min={0} max={100} unit="%" note="Saare active validators mein split hoga" />
+            <NumInput label="Node Runners Share" value={p.gasNodePct} onChange={v => update("gasNodePct", v)} min={0} max={100} unit="%" note="Sirf node chalane walo ko — validator ya delegator bhi ho sakta hai" />
+            <NumInput label="Validators Share" value={p.gasValidatorPct} onChange={v => update("gasValidatorPct", v)} min={0} max={100} unit="%" note="Saare active validators mein split (staking reward)" />
+            <NumInput label="Delegators Share" value={p.gasDelegatorPct} onChange={v => update("gasDelegatorPct", v)} min={0} max={100} unit="%" note="Saare delegators mein unke stake ke anupaat mein split" />
             <NumInput label="Treasury Share" value={p.gasTreasuryPct} onChange={v => update("gasTreasuryPct", v)} min={0} max={100} unit="%" note="Zebvix Technologies founder treasury" />
             <NumInput label="Burn Share 🔥" value={p.gasBurnPct} onChange={v => update("gasBurnPct", v)} min={0} max={100} unit="%" note="Automatically deducted from every transaction gas fee" />
             <NumInput label="Min Gas Price" value={p.minGasPrice} onChange={v => update("minGasPrice", v)} min={100} step={100} unit="MIST" note={`= ${(p.minGasPrice / 1e9).toFixed(6)} ZBX minimum per transaction`} />
@@ -429,7 +435,9 @@ export default function EconomicDesign() {
             <h3 className="font-bold text-foreground mb-4">Gas Fee Split Visual</h3>
             <div className="space-y-3">
               {[
+                { label: "Node Runners", pct: p.gasNodePct, color: "bg-cyan-500", textColor: "text-cyan-400" },
                 { label: "Validators", pct: p.gasValidatorPct, color: "bg-primary", textColor: "text-primary" },
+                { label: "Delegators", pct: p.gasDelegatorPct, color: "bg-pink-500", textColor: "text-pink-400" },
                 { label: "Treasury", pct: p.gasTreasuryPct, color: "bg-blue-500", textColor: "text-blue-400" },
                 { label: "Burn 🔥", pct: p.gasBurnPct, color: "bg-orange-500", textColor: "text-orange-400" },
               ].map(item => (
@@ -451,14 +459,18 @@ export default function EconomicDesign() {
               <div className="mt-4">
                 <div className="text-xs text-muted-foreground mb-1">Combined view</div>
                 <div className="h-5 rounded-full overflow-hidden flex">
+                  <div className="bg-cyan-500 transition-all" style={{ width: `${p.gasNodePct}%` }} />
                   <div className="bg-primary transition-all" style={{ width: `${p.gasValidatorPct}%` }} />
+                  <div className="bg-pink-500 transition-all" style={{ width: `${p.gasDelegatorPct}%` }} />
                   <div className="bg-blue-500 transition-all" style={{ width: `${p.gasTreasuryPct}%` }} />
                   <div className="bg-orange-500 transition-all" style={{ width: `${p.gasBurnPct}%` }} />
                 </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>Validators {p.gasValidatorPct}%</span>
-                  <span>Treasury {p.gasTreasuryPct}%</span>
-                  <span>Burn {p.gasBurnPct}%</span>
+                <div className="flex flex-wrap gap-x-3 text-[10px] text-muted-foreground mt-1">
+                  <span className="text-cyan-400">Nodes {p.gasNodePct}%</span>
+                  <span className="text-primary">Validators {p.gasValidatorPct}%</span>
+                  <span className="text-pink-400">Delegators {p.gasDelegatorPct}%</span>
+                  <span className="text-blue-400">Treasury {p.gasTreasuryPct}%</span>
+                  <span className="text-orange-400">Burn {p.gasBurnPct}%</span>
                 </div>
               </div>
             </div>
@@ -508,10 +520,13 @@ pub const SECOND_HALVING_ZBX: u64   = ${p.secondHalving.toLocaleString()};
 pub const INITIAL_BLOCK_REWARD_MIST: u64 
     = ${(p.blockRewardGenesis * 1e9).toFixed(0)}; // ${p.blockRewardGenesis} ZBX
 
-// ── Gas Fee Split (basis points, 100 bps = 1%) ───────
-pub const GAS_VALIDATOR_BPS: u64    = ${p.gasValidatorPct * 100};
-pub const GAS_TREASURY_BPS: u64     = ${p.gasTreasuryPct * 100};
-pub const GAS_BURN_BPS: u64         = ${p.gasBurnPct * 100};
+// ── Gas Fee Split (basis points, 100 bps = 1%, sum = 10000) ──
+pub const GAS_NODE_BPS: u64       = ${p.gasNodePct * 100};  // ${p.gasNodePct}% → node runners
+pub const GAS_VALIDATOR_BPS: u64  = ${p.gasValidatorPct * 100};  // ${p.gasValidatorPct}% → validators
+pub const GAS_DELEGATOR_BPS: u64  = ${p.gasDelegatorPct * 100};  // ${p.gasDelegatorPct}% → delegators
+pub const GAS_TREASURY_BPS: u64   = ${p.gasTreasuryPct * 100};  // ${p.gasTreasuryPct}% → founder treasury
+pub const GAS_BURN_BPS: u64       = ${p.gasBurnPct * 100};  // ${p.gasBurnPct}% → burn 🔥
+// Total: ${p.gasNodePct + p.gasValidatorPct + p.gasDelegatorPct + p.gasTreasuryPct + p.gasBurnPct}% (must be 100)
 
 // ── Burn Cap ─────────────────────────────────────────
 /// Maximum ZBX that can EVER be burned (${p.maxBurnPct}% of max supply).
