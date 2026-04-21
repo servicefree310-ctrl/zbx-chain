@@ -51,6 +51,20 @@ const CHANGES_LOG = [
       { type: "add", text: "adjusted_block_reward(total_minted) function" },
     ],
   },
+  {
+    phase: "P3",
+    date: "Apr 21, 2026",
+    color: "text-orange-400",
+    dot: "bg-orange-500",
+    label: "Burn Cap",
+    entries: [
+      { type: "add", text: "MAX_BURN_SUPPLY_MIST = 75_000_000 × 10⁹ (50% of max supply = 75M ZBX hard burn cap)" },
+      { type: "add", text: "is_burn_allowed(total_burned_mist: u64) → bool function (gas_coin.rs)" },
+      { type: "add", text: "Burn gate: if total_burned >= MAX_BURN_SUPPLY_MIST → burn skip, amount validators ko jaata hai" },
+      { type: "change", text: "GAS_BURN_BPS logic: automatic fee deduction per txn — koi manual burn nahi" },
+      { type: "change", text: "After-cap fee split: 82% validators + 18% treasury (burn share redirect)" },
+    ],
+  },
 ];
 
 const PHASES = [
@@ -376,6 +390,11 @@ export default function PhaseTracker() {
                       <span className="text-sm font-medium text-foreground">
                         {PHASES.find(p => p.id === log.phase)?.title}
                       </span>
+                      {(log as any).label && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                          {(log as any).label}
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground ml-auto">{log.date}</span>
                     </div>
 
