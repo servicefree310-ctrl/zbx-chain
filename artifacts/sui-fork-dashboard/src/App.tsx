@@ -16,6 +16,12 @@ import Customization from "@/pages/customization";
 import Checklist from "@/pages/checklist";
 import Production from "@/pages/production";
 import QuickStart from "@/pages/quick-start";
+import BlockExplorer from "@/pages/block-explorer";
+import WalletPage from "@/pages/wallet";
+import Faucet from "@/pages/faucet";
+import Bridge from "@/pages/bridge";
+import Staking from "@/pages/staking";
+import Dex from "@/pages/dex";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +39,12 @@ function Router() {
         <Route path="/customization" component={Customization} />
         <Route path="/checklist" component={Checklist} />
         <Route path="/production" component={Production} />
+        <Route path="/block-explorer" component={BlockExplorer} />
+        <Route path="/wallet" component={WalletPage} />
+        <Route path="/faucet" component={Faucet} />
+        <Route path="/bridge" component={Bridge} />
+        <Route path="/staking" component={Staking} />
+        <Route path="/dex" component={Dex} />
         <Route component={NotFound} />
       </Switch>
     </Shell>
