@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Sui Chain Fork Dashboard"
+version = "1.0.0"
+id = "artifacts/sui-fork-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18487
+
+[services.development]
+run = "pnpm --filter @workspace/sui-fork-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sui-fork-dashboard", "run", "build" ]
+publicDir = "artifacts/sui-fork-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18487"
+BASE_PATH = "/"
