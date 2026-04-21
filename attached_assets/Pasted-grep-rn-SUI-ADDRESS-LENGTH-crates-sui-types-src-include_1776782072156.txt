@@ -1,0 +1,48 @@
+grep -rn "SUI_ADDRESS_LENGTH" crates/sui-types/src/ --include="*.rs" | head -10
+crates/sui-types/src/storage/mod.rs
+crates/sui-types/src/storage/read_store.rs
+crates/sui-types/src/derived_object.rs
+crates/sui-types/src/sui_sdk_types_conversions.rs
+crates/sui-types/src/base_types.rs
+crates/sui-types/src/coin_reservation.rs
+crates/sui-types/src/multisig.rs
+crates/sui-types/src/execution_status.rs
+crates/sui-types/src/event.rs
+crates/sui-types/src/address_alias.rs
+crates/sui-types/src/effects/effects_v1.rs
+crates/sui-types/src/effects/object_change.rs
+crates/sui-types/src/effects/effects_v2.rs
+crates/sui-types/src/error.rs
+crates/sui-types/src/multisig_legacy.rs
+crates/sui-types/src/signature.rs
+crates/sui-types/src/crypto.rs
+crates/sui-types/src/zk_login_authenticator.rs
+crates/sui-types/src/balance_change.rs
+crates/sui-types/src/bridge.rs
+crates/sui-types/src/funds_accumulator.rs
+crates/sui-types/src/deny_list_v1.rs
+crates/sui-types/src/signature_verification.rs
+crates/sui-types/src/passkey_authenticator.rs
+crates/sui-types/src/dynamic_field.rs
+crates/sui-types/src/deny_list_v2.rs
+crates/sui-types/src/lib.rs
+crates/sui-types/src/programmable_transaction_builder.rs
+crates/sui-types/src/transaction.rs
+crates/sui-types/src/object.rs
+crates/sui-types/src/messages_grpc.rs
+crates/sui-types/src/accumulator_root.rs
+crates/sui-types/src/sui_system_state/sui_system_state_inner_v2.rs
+crates/sui-types/src/sui_system_state/sui_system_state_inner_v1.rs
+crates/sui-types/src/sui_system_state/epoch_start_sui_system_state.rs
+crates/sui-types/src/sui_system_state/sui_system_state_summary.rs
+crates/sui-types/src/accumulator_event.rs
+crates/sui-types/src/base_types.rs:999:impl fmt::Display for SuiAddress {
+crates/sui-types/src/zk_login_authenticator.rs:303:impl std::fmt::Display for AddressSeed {
+crates/sui-types/src/base_types.rs:788:pub const SUI_ADDRESS_LENGTH: usize = ObjectID::LENGTH;
+crates/sui-types/src/base_types.rs:798:    [u8; SUI_ADDRESS_LENGTH],
+crates/sui-types/src/base_types.rs:802:    pub const ZERO: Self = Self([0u8; SUI_ADDRESS_LENGTH]);
+crates/sui-types/src/base_types.rs:815:        let buf: [u8; SUI_ADDRESS_LENGTH] = rng.r#gen();
+crates/sui-types/src/base_types.rs:843:    pub fn to_inner(self) -> [u8; SUI_ADDRESS_LENGTH] {
+crates/sui-types/src/base_types.rs:849:        <[u8; SUI_ADDRESS_LENGTH]>::try_from(bytes.as_ref())
+crates/sui-types/src/base_types.rs:1013:    let addr = [name; SUI_ADDRESS_LENGTH];
+root@srv1266996:~/zebvix-node# 
