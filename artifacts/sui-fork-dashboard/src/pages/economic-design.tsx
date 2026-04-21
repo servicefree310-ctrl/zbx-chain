@@ -9,8 +9,11 @@ interface EconomicParams {
   secondHalving: number;
   blockRewardGenesis: number;
   blockTimeMs: number;
+  maxValidators: number;
   minValidatorStake: number;
+  maxStakePerValidator: number;
   validatorStakingApr: number;
+  delegatorApr: number;
   validatorMaxRewardEpoch: number;
   nodeRunnerDailyReward: number;
   nodeRunnerPoolCap: number;
@@ -30,8 +33,11 @@ const DEFAULTS: EconomicParams = {
   secondHalving: 100_000_000,
   blockRewardGenesis: 0.1,
   blockTimeMs: 400,
+  maxValidators: 41,
   minValidatorStake: 10_000,
+  maxStakePerValidator: 5_000_000,
   validatorStakingApr: 120,
+  delegatorApr: 60,
   validatorMaxRewardEpoch: 1_000,
   nodeRunnerDailyReward: 5,
   nodeRunnerPoolCap: 4_000,
@@ -125,7 +131,14 @@ export default function EconomicDesign() {
 
     const gasBurnCheck = p.gasValidatorPct + p.gasTreasuryPct + p.gasBurnPct;
     const maxBurnZBX = Math.floor(p.maxSupply * (p.maxBurnPct / 100));
-    const afterBurnValidatorPct = p.gasValidatorPct + p.gasBurnPct; // burn redistributed to validators after cap
+    const afterBurnValidatorPct = p.gasValidatorPct + p.gasBurnPct;
+
+    // Staking calculations
+    const maxNetworkStake = p.maxValidators * p.maxStakePerValidator;
+    const maxNetworkStakePct = ((maxNetworkStake / p.maxSupply) * 100).toFixed(1);
+    const validatorYearlyReward = Math.round(p.minValidatorStake * p.validatorStakingApr / 100);
+    const delegatorYearlyReward10k = Math.round(10_000 * p.delegatorApr / 100);
+    const maxSlotDelegatorReward = Math.round((p.maxStakePerValidator - p.minValidatorStake) * p.delegatorApr / 100);
 
     return {
       blocksPerDay: Math.round(blocksPerDay).toLocaleString(),
@@ -141,6 +154,11 @@ export default function EconomicDesign() {
       isValidFee: gasBurnCheck === 100,
       maxBurnZBX,
       afterBurnValidatorPct,
+      maxNetworkStake: maxNetworkStake.toLocaleString(),
+      maxNetworkStakePct,
+      validatorYearlyReward: validatorYearlyReward.toLocaleString(),
+      delegatorYearlyReward10k: delegatorYearlyReward10k.toLocaleString(),
+      maxSlotDelegatorReward: maxSlotDelegatorReward.toLocaleString(),
     };
   }, [p]);
 
@@ -252,19 +270,59 @@ export default function EconomicDesign() {
               <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 text-xs flex items-center justify-center font-bold">3</span>
               Validator & Node Rewards
             </h3>
-            <NumInput label="Min Validator Stake" value={p.minValidatorStake} onChange={v => update("minValidatorStake", v)} min={100} step={1000} unit="ZBX" note="Koi bhi isse stake + node chalaye → validator ban jaye" />
-            <NumInput label="Validator Staking APR" value={p.validatorStakingApr} onChange={v => update("validatorStakingApr", v)} min={1} max={500} step={5} unit="% APR" note={`${p.minValidatorStake.toLocaleString()} ZBX stake pe = ${Math.round(p.minValidatorStake * p.validatorStakingApr / 100).toLocaleString()} ZBX/year reward`} />
-            <NumInput label="Node Runner Daily Reward" value={p.nodeRunnerDailyReward} onChange={v => update("nodeRunnerDailyReward", v)} min={0.1} step={0.5} unit="ZBX/day" note="Staking APR ke upar alag se — node run karne ka bonus" />
+            {/* Validator Slot Config */}
+            <div className="grid grid-cols-2 gap-3 rounded-lg bg-pink-500/5 border border-pink-500/20 p-3">
+              <div className="col-span-2 text-xs font-semibold text-pink-400 mb-1">Validator Slot Configuration</div>
+              <div className="col-span-1">
+                <NumInput label="Max Validator Slots" value={p.maxValidators} onChange={v => update("maxValidators", v)} min={1} max={200} step={1} unit="slots" note="Sirf 41 active validators — baad mein naya nahi" />
+              </div>
+              <div className="col-span-1">
+                <NumInput label="Max Stake / Slot" value={p.maxStakePerValidator} onChange={v => update("maxStakePerValidator", v)} min={10_000} step={100_000} unit="ZBX" note={`41 slots × ${(p.maxStakePerValidator/1e6).toFixed(1)}M = ${computed.maxNetworkStake} ZBX max network stake (${computed.maxNetworkStakePct}% of supply)`} />
+              </div>
+            </div>
+
+            <NumInput label="Min Validator Stake (self)" value={p.minValidatorStake} onChange={v => update("minValidatorStake", v)} min={100} step={1000} unit="ZBX" note="Koi bhi isse stake + node chalaye → validator slot lo" />
+
+            {/* APR config */}
+            <div className="rounded-lg bg-muted/10 border border-border p-3 space-y-3">
+              <div className="text-xs font-semibold text-muted-foreground">APR Settings</div>
+              <NumInput label="Validator Staking APR" value={p.validatorStakingApr} onChange={v => update("validatorStakingApr", v)} min={1} max={500} step={5} unit="% APR" note={`Min stake (${p.minValidatorStake.toLocaleString()} ZBX) pe = ${computed.validatorYearlyReward} ZBX/year — node runner only`} />
+              <NumInput label="Delegator APR" value={p.delegatorApr} onChange={v => update("delegatorApr", v)} min={1} max={400} step={5} unit="% APR" note={`10,000 ZBX delegate pe = ${computed.delegatorYearlyReward10k} ZBX/year — bina node chalaye`} />
+            </div>
+
+            {/* Staking limits summary box */}
+            <div className="rounded-lg bg-pink-500/8 border border-pink-500/20 p-3 space-y-1.5 text-xs">
+              <div className="font-semibold text-pink-300 mb-1">Staking Limits (Live):</div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { l: "Max Validators", v: `${p.maxValidators} slots` },
+                  { l: "Max Stake / Slot", v: `${(p.maxStakePerValidator/1e6).toFixed(1)}M ZBX` },
+                  { l: "Max Network Stake", v: `${computed.maxNetworkStake} ZBX` },
+                  { l: "% of Total Supply", v: `${computed.maxNetworkStakePct}%` },
+                  { l: "Validator APR", v: `${p.validatorStakingApr}% (self)` },
+                  { l: "Delegator APR", v: `${p.delegatorApr}% (no node)` },
+                ].map(item => (
+                  <div key={item.l} className="rounded bg-muted/20 px-2 py-1.5">
+                    <div className="text-muted-foreground text-[10px]">{item.l}</div>
+                    <div className="font-mono font-semibold text-foreground">{item.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10px] text-muted-foreground pt-1 border-t border-border/50">
+                E_SLOT_FULL: slot pe 5M ZBX ho gaye → naya delegation reject | E_VALIDATOR_CAP_REACHED: 41 validators active → naya validator nahi
+              </div>
+            </div>
+
+            <NumInput label="Node Runner Daily Reward" value={p.nodeRunnerDailyReward} onChange={v => update("nodeRunnerDailyReward", v)} min={0.1} step={0.5} unit="ZBX/day" note="Staking APR ke upar alag se — sirf node chalane walo ko (delegator ko nahi)" />
             <NumInput label="Node Runner Pool Cap" value={p.nodeRunnerPoolCap} onChange={v => update("nodeRunnerPoolCap", v)} min={100} step={100} unit="ZBX/day total" note="Sabhi node runners milake max yeh le sakte hain" />
             <NumInput label="Validator Max Reward / Epoch" value={p.validatorMaxRewardEpoch} onChange={v => update("validatorMaxRewardEpoch", v)} min={10} step={100} unit="ZBX" note="Genesis phase mein — halving ke baad half hoga" />
-            <NumInput label="Delegator Base APR" value={p.delegatorBaseRate} onChange={v => update("delegatorBaseRate", v)} min={0.1} max={100} step={0.5} unit="% APR" note="Genesis phase mein — halving ke baad half hoga" />
 
             {/* Pre-validator & Founder Treasury rule */}
             <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 space-y-2 mt-1">
               <div className="text-xs font-semibold text-amber-400">Founder Treasury Rules:</div>
               <div className="space-y-1.5 text-xs text-muted-foreground">
                 <div className="flex gap-2"><span className="text-amber-400">•</span><span><strong className="text-foreground">Pre-validator period:</strong> Jab tak koi validator active nahi — saari staking rewards founder treasury mein jaati hain</span></div>
-                <div className="flex gap-2"><span className="text-amber-400">•</span><span><strong className="text-foreground">Validator active hone ke baad:</strong> 120% APR validator ko, remaining surplus → founder treasury</span></div>
+                <div className="flex gap-2"><span className="text-amber-400">•</span><span><strong className="text-foreground">Validator active hone ke baad:</strong> {p.validatorStakingApr}% APR validator ko, {p.delegatorApr}% APR delegators ko, remaining surplus → founder treasury</span></div>
                 <div className="flex gap-2"><span className="text-amber-400">•</span><span><strong className="text-foreground">Founder Admin Cap:</strong> Core chain change nahi kar sakta — sirf naye features add kar sakta hai (MultiSig 4/6)</span></div>
                 <div className="flex gap-2"><span className="text-green-400">→</span><span>Founder wallet = Admin MultiSig, akele kuch nahi badal sakta — supermajority required</span></div>
               </div>
