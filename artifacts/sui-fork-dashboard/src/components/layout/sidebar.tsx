@@ -73,7 +73,7 @@ export function Sidebar() {
           <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
             <div className="w-2.5 h-2.5 bg-background rounded-sm" />
           </div>
-          <span className="font-semibold text-foreground tracking-tight">Sui Fork Dev</span>
+          <span className="font-semibold text-foreground tracking-tight">Zebvix Dev</span>
         </div>
         <Sheet>
           <SheetTrigger asChild>
@@ -87,7 +87,7 @@ export function Sidebar() {
                 <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
                   <div className="w-2.5 h-2.5 bg-background rounded-sm" />
                 </div>
-                <span className="font-semibold text-foreground tracking-tight">Sui Fork Dev</span>
+                <span className="font-semibold text-foreground tracking-tight">Zebvix Dev</span>
               </div>
               <NavLinks />
               <ProgressWidget />
@@ -103,7 +103,7 @@ export function Sidebar() {
             <div className="w-7 h-7 rounded bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(76,163,255,0.3)]">
               <div className="w-3 h-3 bg-background rounded-sm" />
             </div>
-            <span className="font-bold text-lg text-foreground tracking-tight">Sui Fork Dev</span>
+            <span className="font-bold text-lg text-foreground tracking-tight">Zebvix Dev</span>
           </div>
           <NavLinks />
           <ProgressWidget />

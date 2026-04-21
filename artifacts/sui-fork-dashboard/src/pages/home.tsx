@@ -6,10 +6,10 @@ export default function Home() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
-          Sui Fork Dashboard
+          Zebvix Chain Fork Dashboard
         </h1>
         <p className="text-lg text-muted-foreground leading-relaxed">
-          A precision reference manual for engineering teams building custom L1 blockchains on top of the Sui codebase.
+          A precision reference manual for engineering teams building the Zebvix (ZBX) custom L1 blockchain on top of the Sui codebase.
         </p>
       </div>
 
@@ -17,25 +17,25 @@ export default function Home() {
         <div className="p-6 rounded-lg bg-card border border-border">
           <h3 className="text-lg font-semibold mb-2 text-primary">Move VM</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Object-centric smart contract execution environment. Secure, fast, and designed for parallel execution of independent transactions.
+            Object-centric smart contract execution environment. Secure, fast, and designed for parallel execution of independent Zebvix (ZBX) transactions.
           </p>
         </div>
         <div className="p-6 rounded-lg bg-card border border-border">
           <h3 className="text-lg font-semibold mb-2 text-primary">Mysticeti Consensus</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Sui's cutting-edge BFT consensus engine. Achieves sub-second latency and high throughput for shared-object transactions.
+            Zebvix's cutting-edge BFT consensus engine. Achieves sub-second latency and high throughput for shared-object transactions.
           </p>
         </div>
         <div className="p-6 rounded-lg bg-card border border-border">
           <h3 className="text-lg font-semibold mb-2 text-primary">Object Model</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Everything is an object. Owned objects bypass consensus entirely (Fast Path), enabling massive linear scalability.
+            Everything is an object. Owned objects bypass consensus entirely (Fast Path), enabling massive linear scalability on the Zebvix network.
           </p>
         </div>
         <div className="p-6 rounded-lg bg-card border border-border">
           <h3 className="text-lg font-semibold mb-2 text-primary">Validators</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Permissionless delegated Proof-of-Stake (dPoS) network. Validators process transactions and participate in consensus.
+            Permissionless delegated Proof-of-Stake (dPoS) network. Zebvix validators process ZBX transactions and participate in consensus.
           </p>
         </div>
       </div>
@@ -51,14 +51,34 @@ export default function Home() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold border-b border-border pb-2">Quick Start</h2>
-        <p className="text-muted-foreground">Clone the repository and build the node binary to get started immediately.</p>
+        <h2 className="text-2xl font-semibold border-b border-border pb-2">Quick Start — Zebvix Fork</h2>
+        <p className="text-muted-foreground">Clone the Sui repository (base for Zebvix), rename it, and build the node binary to get started.</p>
         <CodeBlock 
           language="bash"
-          code={`git clone https://github.com/MystenLabs/sui.git
-cd sui
+          code={`git clone https://github.com/MystenLabs/sui.git zebvix
+cd zebvix
+# Rename remotes for your fork
+git remote rename origin upstream
 cargo build --release -p sui-node`}
         />
+      </div>
+
+      <div className="p-5 rounded-lg bg-primary/5 border border-primary/20">
+        <h3 className="font-semibold text-primary mb-1">Chain Identity</h3>
+        <div className="flex gap-8 mt-2 text-sm">
+          <div>
+            <span className="text-muted-foreground">Chain Name: </span>
+            <span className="font-mono text-foreground font-semibold">Zebvix</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Token Symbol: </span>
+            <span className="font-mono text-foreground font-semibold">ZBX</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Chain ID: </span>
+            <span className="font-mono text-foreground font-semibold">zebvix-mainnet-1</span>
+          </div>
+        </div>
       </div>
     </div>
   );
