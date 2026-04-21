@@ -17,6 +17,7 @@ interface EconomicParams {
   gasValidatorPct: number;
   gasTreasuryPct: number;
   gasBurnPct: number;
+  maxBurnPct: number;
   minGasPrice: number;
   epochDurationHrs: number;
 }
@@ -36,6 +37,7 @@ const DEFAULTS: EconomicParams = {
   gasValidatorPct: 72,
   gasTreasuryPct: 18,
   gasBurnPct: 10,
+  maxBurnPct: 50,
   minGasPrice: 1000,
   epochDurationHrs: 24,
 };
@@ -120,6 +122,8 @@ export default function EconomicDesign() {
     const totalYears = totalDays / 365;
 
     const gasBurnCheck = p.gasValidatorPct + p.gasTreasuryPct + p.gasBurnPct;
+    const maxBurnZBX = Math.floor(p.maxSupply * (p.maxBurnPct / 100));
+    const afterBurnValidatorPct = p.gasValidatorPct + p.gasBurnPct; // burn redistributed to validators after cap
 
     return {
       blocksPerDay: Math.round(blocksPerDay).toLocaleString(),
@@ -133,6 +137,8 @@ export default function EconomicDesign() {
       totalYears: totalYears.toFixed(1),
       gasBurnCheck,
       isValidFee: gasBurnCheck === 100,
+      maxBurnZBX,
+      afterBurnValidatorPct,
     };
   }, [p]);
 
@@ -262,8 +268,33 @@ export default function EconomicDesign() {
             </h3>
             <NumInput label="Validators Share" value={p.gasValidatorPct} onChange={v => update("gasValidatorPct", v)} min={0} max={100} unit="%" note="Saare active validators mein split hoga" />
             <NumInput label="Treasury Share" value={p.gasTreasuryPct} onChange={v => update("gasTreasuryPct", v)} min={0} max={100} unit="%" note="Zebvix Technologies founder treasury" />
-            <NumInput label="Burn Share 🔥" value={p.gasBurnPct} onChange={v => update("gasBurnPct", v)} min={0} max={100} unit="%" note="Permanently destroyed — deflationary pressure" />
+            <NumInput label="Burn Share 🔥" value={p.gasBurnPct} onChange={v => update("gasBurnPct", v)} min={0} max={100} unit="%" note="Automatically deducted from every transaction gas fee" />
             <NumInput label="Min Gas Price" value={p.minGasPrice} onChange={v => update("minGasPrice", v)} min={100} step={100} unit="MIST" note={`= ${(p.minGasPrice / 1e9).toFixed(6)} ZBX minimum per transaction`} />
+
+            {/* Burn Cap Section */}
+            <div className="border-t border-border pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-orange-400">🔥 Max Burn Cap</span>
+                <span className="text-xs text-muted-foreground">— burn isse zyada kabhi nahi hoga</span>
+              </div>
+              <NumInput
+                label="Max Burn (% of total supply)"
+                value={p.maxBurnPct}
+                onChange={v => update("maxBurnPct", Math.min(v, 100))}
+                min={1} max={100} step={5} unit="%"
+                note={`= ${(computed.maxBurnZBX / 1e6).toFixed(1)}M ZBX maximum burn — phir burn permanently band`}
+              />
+              <div className="rounded-lg bg-orange-500/10 border border-orange-500/20 p-3 space-y-2">
+                <div className="text-xs font-semibold text-orange-400">Burn Cap Rules:</div>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div className="flex gap-2"><span className="text-orange-400">•</span><span>Har transaction mein gas fee ka <strong className="text-foreground">{p.gasBurnPct}%</strong> automatically burn hoga</span></div>
+                  <div className="flex gap-2"><span className="text-orange-400">•</span><span>Koi bhi user burn trigger kar sakta hai — sirf fee se hoga, manually nahi</span></div>
+                  <div className="flex gap-2"><span className="text-orange-400">•</span><span>Jab total burned = <strong className="text-foreground">{(computed.maxBurnZBX / 1e6).toFixed(1)}M ZBX</strong> ho jaye → burn permanently stop</span></div>
+                  <div className="flex gap-2"><span className="text-green-400">→</span><span>After cap: burn share validators ko milega (<strong className="text-foreground">{computed.afterBurnValidatorPct}% total</strong>)</span></div>
+                </div>
+              </div>
+            </div>
+
             {!computed.isValidFee && (
               <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded p-2">
                 ⚠️ Fee split {computed.gasBurnCheck}% hai — exactly 100% hona chahiye!
@@ -376,15 +407,34 @@ export default function EconomicDesign() {
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
             <h3 className="font-bold text-foreground mb-3 text-sm">Rust Constants (gas_coin.rs)</h3>
             <pre className="text-xs text-primary/90 font-mono overflow-x-auto leading-relaxed">
-{`pub const MAX_TOTAL_SUPPLY_ZBX: u64 = ${p.maxSupply.toLocaleString()};
+{`// ── Supply ───────────────────────────────────────────
+pub const MAX_TOTAL_SUPPLY_ZBX: u64 = ${p.maxSupply.toLocaleString()};
 pub const GENESIS_SUPPLY_ZBX: u64   = ${p.genesisSupply.toLocaleString()};
 pub const FIRST_HALVING_ZBX: u64    = ${p.firstHalving.toLocaleString()};
 pub const SECOND_HALVING_ZBX: u64   = ${p.secondHalving.toLocaleString()};
+
+// ── Block Reward ─────────────────────────────────────
 pub const INITIAL_BLOCK_REWARD_MIST: u64 
     = ${(p.blockRewardGenesis * 1e9).toFixed(0)}; // ${p.blockRewardGenesis} ZBX
+
+// ── Gas Fee Split (basis points, 100 bps = 1%) ───────
 pub const GAS_VALIDATOR_BPS: u64    = ${p.gasValidatorPct * 100};
 pub const GAS_TREASURY_BPS: u64     = ${p.gasTreasuryPct * 100};
 pub const GAS_BURN_BPS: u64         = ${p.gasBurnPct * 100};
+
+// ── Burn Cap ─────────────────────────────────────────
+/// Maximum ZBX that can EVER be burned (${p.maxBurnPct}% of max supply).
+/// Once total_burned >= MAX_BURN_SUPPLY_MIST, all future burn
+/// share is redirected to validators instead.
+pub const MAX_BURN_SUPPLY_MIST: u64 
+    = ${(computed.maxBurnZBX * 1e9).toFixed(0)}; // ${(computed.maxBurnZBX / 1e6).toFixed(1)}M ZBX
+
+/// Call before every gas-burn to check if burn is still allowed.
+pub fn is_burn_allowed(total_burned_mist: u64) -> bool {
+    total_burned_mist < MAX_BURN_SUPPLY_MIST
+}
+
+// ── Staking ──────────────────────────────────────────
 pub const MIN_VALIDATOR_STAKE_MIST: u64 
     = ${(p.minValidatorStake * 1e9).toFixed(0)};`}
             </pre>
