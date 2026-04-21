@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "OoWVMTCdLxL4ByhdeHoCP"
+uri = "file://zebvix-chain-patches.tar.gz"
+type = "unspecified"
+title = "zebvix-chain-patches.tar.gz — Zebvix Chain Final Patches"
