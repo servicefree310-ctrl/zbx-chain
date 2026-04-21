@@ -1,0 +1,72 @@
+root@srv1266996:~/zebvix-node# cd ~/zebvix-node
+cargo build --release -p sui-node --bin zebvix-node 2>&1 | grep "^error" | head -20
+
+# Ya full errors:
+cargo build --release -p sui-node --bin zebvix-node 2>&1 | grep -A 10 "^error\[" | head -80
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error: could not compile `sui-types` (lib) due to 5 previous errors; 1 warning emitted
+error: could not compile `sui-types` (lib) due to 5 previous errors; 1 warning emitted
+error[E0308]: mismatched types
+   --> crates/sui-types/src/base_types.rs:875:14
+    |
+875 |         Self(object_id.into_bytes())
+    |         ---- ^^^^^^^^^^^^^^^^^^^^^^ expected an array with a size of 20, found one with a size of 32
+    |         |
+    |         arguments to this function are incorrect
+    |
+note: tuple struct defined here
+   --> crates/sui-types/src/base_types.rs:795:12
+    |
+--
+error[E0308]: mismatched types
+   --> crates/sui-types/src/base_types.rs:881:14
+    |
+881 |         Self(address.into_bytes())
+    |         ---- ^^^^^^^^^^^^^^^^^^^^ expected an array with a size of 20, found one with a size of 32
+    |         |
+    |         arguments to this function are incorrect
+    |
+note: tuple struct defined here
+   --> crates/sui-types/src/base_types.rs:795:12
+    |
+--
+error[E0308]: mismatched types
+    --> crates/sui-types/src/base_types.rs:1310:41
+     |
+1310 |             sender: AccountAddress::new(sender.0),
+     |                     ------------------- ^^^^^^^^ expected an array with a size of 32, found one with a size of 20
+     |                     |
+     |                     arguments to this function are incorrect
+     |
+note: associated function defined here
+    --> /root/zebvix-node/external-crates/move/crates/move-core-types/src/account_address.rs:19:18
+     |
+--
+error[E0308]: mismatched types
+    --> crates/sui-types/src/base_types.rs:1811:19
+     |
+1811 |         Self::new(address.0)
+     |         --------- ^^^^^^^^^ expected an array with a size of 32, found one with a size of 20
+     |         |
+     |         arguments to this function are incorrect
+     |
+note: associated function defined here
+    --> /root/zebvix-node/external-crates/move/crates/move-core-types/src/account_address.rs:19:18
+     |
+--
+error[E0308]: mismatched types
+   --> crates/sui-types/src/sui_sdk_types_conversions.rs:218:19
+    |
+218 |         Self::new(value.to_inner())
+    |         --------- ^^^^^^^^^^^^^^^^ expected an array with a size of 32, found one with a size of 20
+    |         |
+    |         arguments to this function are incorrect
+    |
+note: associated function defined here
+   --> /root/.cargo/git/checkouts/sui-rust-sdk-fe7f6863fe645b2e/e5c53de/crates/sui-sdk-types/src/address.rs:72:18
+    |
+root@srv1266996:~/zebvix-node# 
