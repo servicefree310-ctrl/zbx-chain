@@ -14,6 +14,7 @@ interface EconomicParams {
   maxStakePerValidator: number;
   validatorStakingApr: number;
   delegatorApr: number;
+  validatorDelegationBonus: number;
   validatorMaxRewardEpoch: number;
   nodeRunnerDailyReward: number;
   nodeRunnerPoolCap: number;
@@ -37,7 +38,8 @@ const DEFAULTS: EconomicParams = {
   minValidatorStake: 10_000,
   maxStakePerValidator: 5_000_000,
   validatorStakingApr: 120,
-  delegatorApr: 60,
+  delegatorApr: 80,
+  validatorDelegationBonus: 40,
   validatorMaxRewardEpoch: 1_000,
   nodeRunnerDailyReward: 5,
   nodeRunnerPoolCap: 4_000,
@@ -139,6 +141,9 @@ export default function EconomicDesign() {
     const validatorYearlyReward = Math.round(p.minValidatorStake * p.validatorStakingApr / 100);
     const delegatorYearlyReward10k = Math.round(10_000 * p.delegatorApr / 100);
     const maxSlotDelegatorReward = Math.round((p.maxStakePerValidator - p.minValidatorStake) * p.delegatorApr / 100);
+    // Validator delegation bonus: 40% APR on total delegated amount in their slot
+    const maxDelegatedPerSlot = p.maxStakePerValidator - p.minValidatorStake;
+    const validatorBonusAtMaxDelegation = Math.round(maxDelegatedPerSlot * p.validatorDelegationBonus / 100);
 
     return {
       blocksPerDay: Math.round(blocksPerDay).toLocaleString(),
@@ -159,6 +164,8 @@ export default function EconomicDesign() {
       validatorYearlyReward: validatorYearlyReward.toLocaleString(),
       delegatorYearlyReward10k: delegatorYearlyReward10k.toLocaleString(),
       maxSlotDelegatorReward: maxSlotDelegatorReward.toLocaleString(),
+      validatorBonusAtMaxDelegation: validatorBonusAtMaxDelegation.toLocaleString(),
+      maxDelegatedPerSlot: maxDelegatedPerSlot.toLocaleString(),
     };
   }, [p]);
 
@@ -286,12 +293,23 @@ export default function EconomicDesign() {
             {/* APR config */}
             <div className="rounded-lg bg-muted/10 border border-border p-3 space-y-3">
               <div className="text-xs font-semibold text-muted-foreground">APR Settings</div>
-              <NumInput label="Validator Staking APR" value={p.validatorStakingApr} onChange={v => update("validatorStakingApr", v)} min={1} max={500} step={5} unit="% APR" note={`Min stake (${p.minValidatorStake.toLocaleString()} ZBX) pe = ${computed.validatorYearlyReward} ZBX/year — node runner only`} />
+              <NumInput label="Validator Self-Stake APR" value={p.validatorStakingApr} onChange={v => update("validatorStakingApr", v)} min={1} max={500} step={5} unit="% APR" note={`Min stake (${p.minValidatorStake.toLocaleString()} ZBX) pe = ${computed.validatorYearlyReward} ZBX/year — apne staked amount pe`} />
               <NumInput label="Delegator APR" value={p.delegatorApr} onChange={v => update("delegatorApr", v)} min={1} max={400} step={5} unit="% APR" note={`10,000 ZBX delegate pe = ${computed.delegatorYearlyReward10k} ZBX/year — bina node chalaye`} />
+              <NumInput label="Validator Delegation Bonus APR" value={p.validatorDelegationBonus} onChange={v => update("validatorDelegationBonus", v)} min={1} max={300} step={5} unit="% APR" note={`Delegators ke staked amount pe validator ko extra — max slot (${computed.maxDelegatedPerSlot} ZBX delegated) pe = ${computed.validatorBonusAtMaxDelegation} ZBX/year bonus`} />
+              {/* APR flow explanation */}
+              <div className="rounded bg-primary/5 border border-primary/20 p-2.5 space-y-1 text-[11px]">
+                <div className="font-semibold text-primary">APR Flow:</div>
+                <div className="text-muted-foreground space-y-0.5">
+                  <div>• <strong className="text-foreground">Delegator</strong> stakes 10K ZBX → gets <strong className="text-green-400">{p.delegatorApr}% APR</strong> = {computed.delegatorYearlyReward10k} ZBX/year</div>
+                  <div>• <strong className="text-foreground">Validator</strong> self-stakes → gets <strong className="text-blue-400">{p.validatorStakingApr}% APR</strong> on own stake</div>
+                  <div>• <strong className="text-foreground">Validator</strong> also gets <strong className="text-purple-400">{p.validatorDelegationBonus}% APR</strong> on all delegated amount in their slot</div>
+                  <div className="text-primary">→ Jitne zyada delegators, utna zyada validator ka bonus!</div>
+                </div>
+              </div>
             </div>
 
             {/* Staking limits summary box */}
-            <div className="rounded-lg bg-pink-500/8 border border-pink-500/20 p-3 space-y-1.5 text-xs">
+            <div className="rounded-lg bg-pink-500/5 border border-pink-500/20 p-3 space-y-1.5 text-xs">
               <div className="font-semibold text-pink-300 mb-1">Staking Limits (Live):</div>
               <div className="grid grid-cols-2 gap-2">
                 {[
@@ -299,8 +317,8 @@ export default function EconomicDesign() {
                   { l: "Max Stake / Slot", v: `${(p.maxStakePerValidator/1e6).toFixed(1)}M ZBX` },
                   { l: "Max Network Stake", v: `${computed.maxNetworkStake} ZBX` },
                   { l: "% of Total Supply", v: `${computed.maxNetworkStakePct}%` },
-                  { l: "Validator APR", v: `${p.validatorStakingApr}% (self)` },
-                  { l: "Delegator APR", v: `${p.delegatorApr}% (no node)` },
+                  { l: "Delegator APR", v: `${p.delegatorApr}%` },
+                  { l: "Validator Bonus APR", v: `+${p.validatorDelegationBonus}% (on delegated)` },
                 ].map(item => (
                   <div key={item.l} className="rounded bg-muted/20 px-2 py-1.5">
                     <div className="text-muted-foreground text-[10px]">{item.l}</div>
