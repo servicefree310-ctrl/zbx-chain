@@ -1,0 +1,55 @@
+root@srv1266996:~/zebvix-node# cd ~/zebvix-node
+
+# ObjectID::LENGTH se tod ke hardcode 20 karo
+sed -i 's/pub const SUI_ADDRESS_LENGTH: usize = ObjectID::LENGTH;/pub const SUI_ADDRESS_LENGTH: usize = 20; \/\/ EVM-compatible 20 bytes/' \
+    crates/sui-types/src/base_types.rs
+
+# Verify
+grep "SUI_ADDRESS_LENGTH" crates/sui-types/src/base_types.rs | head -3
+pub const SUI_ADDRESS_LENGTH: usize = 20; // EVM-compatible 20 bytes
+    [u8; SUI_ADDRESS_LENGTH],
+    pub const ZERO: Self = Self([0u8; SUI_ADDRESS_LENGTH]);
+root@srv1266996:~/zebvix-node# cd ~/zebvix-node
+
+# Display format dekho (line 999 area)
+sed -n '995,1020p' crates/sui-types/src/base_types.rs
+
+# ObjectID LENGTH check
+grep -n "LENGTH\|= 32\|ObjectID" crates/sui-types/src/base_types.rs | grep "LENGTH" | head -10
+        }
+    }
+}
+
+impl fmt::Display for SuiAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0x{}", Hex::encode(self.0))
+    }
+}
+
+impl fmt::Debug for SuiAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "0x{}", Hex::encode(self.0))
+    }
+}
+
+/// Generate a fake SuiAddress with repeated one byte.
+pub fn dbg_addr(name: u8) -> SuiAddress {
+    let addr = [name; SUI_ADDRESS_LENGTH];
+    SuiAddress(addr)
+}
+
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Serialize, Deserialize, JsonSchema, Debug,
+)]
+pub struct ExecutionDigests {
+788:pub const SUI_ADDRESS_LENGTH: usize = 20; // EVM-compatible 20 bytes
+798:    [u8; SUI_ADDRESS_LENGTH],
+802:    pub const ZERO: Self = Self([0u8; SUI_ADDRESS_LENGTH]);
+815:        let buf: [u8; SUI_ADDRESS_LENGTH] = rng.r#gen();
+843:    pub fn to_inner(self) -> [u8; SUI_ADDRESS_LENGTH] {
+849:        <[u8; SUI_ADDRESS_LENGTH]>::try_from(bytes.as_ref())
+1013:    let addr = [name; SUI_ADDRESS_LENGTH];
+1559:    pub const LENGTH: usize = AccountAddress::LENGTH;
+1561:    pub const ZERO: Self = Self::new([0u8; Self::LENGTH]);
+1562:    pub const MAX: Self = Self::new([0xff; Self::LENGTH]);
+root@srv1266996:~/zebvix-node# 
