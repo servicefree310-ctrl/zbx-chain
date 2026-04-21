@@ -230,6 +230,168 @@ const DEFI_CODE = `module zebvix::simple_vault {
     }
 }`;
 
+const MASTER_POOL_CODE = `// ══════════════════════════════════════════════════════
+// zebvix::master_pool  —  Global ZBX base pool (no admin)
+// ══════════════════════════════════════════════════════
+module zebvix::master_pool {
+    use sui::object::{Self, UID};
+    use sui::balance::{Self, Balance};
+    use sui::tx_context::TxContext;
+    use sui::transfer;
+    use zebvix::zbx::ZBX;  // native coin type
+
+    struct MasterPool has key {
+        id: UID,
+        zbx_reserve: Balance<ZBX>,
+        total_volume_zbx: u64,
+        // NO admin_cap, NO owner — protocol owned forever
+    }
+
+    fun init(ctx: &mut TxContext) {
+        // Shared from genesis — permanently decentralized
+        transfer::share_object(MasterPool {
+            id: object::new(ctx),
+            zbx_reserve: balance::zero<ZBX>(),
+            total_volume_zbx: 0,
+        });
+    }
+
+    // Only sub_pool module can interact with reserves
+    public(friend) fun borrow_reserve(pool: &MasterPool): &Balance<ZBX> {
+        &pool.zbx_reserve
+    }
+}
+
+// ══════════════════════════════════════════════════════
+// zebvix::sub_pool  —  Permissionless token pair pools
+// ══════════════════════════════════════════════════════
+module zebvix::sub_pool {
+    use sui::object::{Self, UID};
+    use sui::balance::{Self, Balance};
+    use sui::coin::{Self, Coin};
+    use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use zebvix::zbx::ZBX;
+
+    // ── Error codes ──
+    const E_MANUAL_LIQUIDITY_DISABLED: u64 = 100;
+    const E_REMOVE_LIQUIDITY_DISABLED: u64 = 101;
+    const E_ZERO_AMOUNT:               u64 = 102;
+    const E_INSUFFICIENT_OUTPUT:       u64 = 103;
+
+    // Fee constants
+    const DEFAULT_FEE_BPS: u64 = 30;   // 0.30% per trade
+    const BPS_DENOM:        u64 = 10_000;
+
+    struct SubPool<phantom T> has key {
+        id: UID,
+        zbx_reserve:   Balance<ZBX>,
+        token_reserve: Balance<T>,
+        creator_fee_addr: address,   // fee jata hai yahan — NOT owner
+        fee_bps: u64,                // e.g. 30 = 0.3%
+        total_volume: u64,
+        // NO owner field — creator only gets fee, nothing else
+    }
+
+    // ── Anyone can create a SubPool ──
+    public fun create_sub_pool<T>(
+        initial_zbx: Coin<ZBX>,
+        initial_token: Coin<T>,
+        fee_bps: u64,
+        ctx: &mut TxContext
+    ) {
+        let creator = tx_context::sender(ctx);
+        transfer::share_object(SubPool<T> {
+            id: object::new(ctx),
+            zbx_reserve:      coin::into_balance(initial_zbx),
+            token_reserve:    coin::into_balance(initial_token),
+            creator_fee_addr: creator,
+            fee_bps,
+            total_volume: 0,
+        });
+    }
+
+    // ── BUY: ZBX deke token lo (x*y=k AMM) ──
+    public fun buy<T>(
+        pool: &mut SubPool<T>,
+        zbx_in: Coin<ZBX>,
+        min_token_out: u64,
+        ctx: &mut TxContext
+    ): Coin<T> {
+        let zbx_amount = coin::value(&zbx_in);
+        assert!(zbx_amount > 0, E_ZERO_AMOUNT);
+
+        // Fee cut for creator
+        let fee = (zbx_amount * pool.fee_bps) / BPS_DENOM;
+        let zbx_net = zbx_amount - fee;
+
+        // x*y=k formula: token_out = token_reserve * zbx_net / (zbx_reserve + zbx_net)
+        let zbx_r = balance::value(&pool.zbx_reserve);
+        let tok_r = balance::value(&pool.token_reserve);
+        let token_out = (tok_r * zbx_net) / (zbx_r + zbx_net);
+        assert!(token_out >= min_token_out, E_INSUFFICIENT_OUTPUT);
+
+        // Update reserves
+        balance::join(&mut pool.zbx_reserve, coin::into_balance(zbx_in));
+        pool.total_volume = pool.total_volume + zbx_amount;
+
+        // Send fee to creator
+        let fee_coin = coin::from_balance(
+            balance::split(&mut pool.zbx_reserve, fee), ctx
+        );
+        transfer::public_transfer(fee_coin, pool.creator_fee_addr);
+
+        coin::from_balance(balance::split(&mut pool.token_reserve, token_out), ctx)
+    }
+
+    // ── SELL: token deke ZBX lo ──
+    public fun sell<T>(
+        pool: &mut SubPool<T>,
+        token_in: Coin<T>,
+        min_zbx_out: u64,
+        ctx: &mut TxContext
+    ): Coin<ZBX> {
+        let tok_amount = coin::value(&token_in);
+        assert!(tok_amount > 0, E_ZERO_AMOUNT);
+
+        let tok_r = balance::value(&pool.token_reserve);
+        let zbx_r = balance::value(&pool.zbx_reserve);
+        let zbx_out_gross = (zbx_r * tok_amount) / (tok_r + tok_amount);
+        let fee = (zbx_out_gross * pool.fee_bps) / BPS_DENOM;
+        let zbx_out = zbx_out_gross - fee;
+        assert!(zbx_out >= min_zbx_out, E_INSUFFICIENT_OUTPUT);
+
+        balance::join(&mut pool.token_reserve, coin::into_balance(token_in));
+        pool.total_volume = pool.total_volume + zbx_out_gross;
+
+        let fee_coin = coin::from_balance(
+            balance::split(&mut pool.zbx_reserve, fee), ctx
+        );
+        transfer::public_transfer(fee_coin, pool.creator_fee_addr);
+
+        coin::from_balance(balance::split(&mut pool.zbx_reserve, zbx_out), ctx)
+    }
+
+    // ── MANUAL ADD LIQUIDITY — PERMANENTLY DISABLED ──
+    public fun add_liquidity<T>(
+        _pool: &mut SubPool<T>,
+        _zbx: Coin<ZBX>,
+        _token: Coin<T>,
+        _ctx: &mut TxContext
+    ) {
+        abort E_MANUAL_LIQUIDITY_DISABLED
+    }
+
+    // ── MANUAL REMOVE LIQUIDITY — PERMANENTLY DISABLED ──
+    public fun remove_liquidity<T>(
+        _pool: &mut SubPool<T>,
+        _amount: u64,
+        _ctx: &mut TxContext
+    ) {
+        abort E_REMOVE_LIQUIDITY_DISABLED
+    }
+}`;
+
 const PAY_ID_CODE = `module zebvix::pay_id {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
@@ -566,6 +728,59 @@ export default function FabricLayer() {
               💡 <strong>Tip:</strong> Ek transaction mein max ~500 recipients — badi list ko batches mein split karo
             </div>
             <CodeBlock code={AIRDROP_CODE} />
+          </Section>
+
+          {/* Master Pool AMM */}
+          <Section icon={ArrowLeftRight} title="Master Pool + Sub Pool AMM — Permissionless DEX" color="border-cyan-500/30 bg-cyan-500/3" badge="x × y = k">
+            {/* Architecture diagram */}
+            <div className="rounded-lg bg-muted/10 border border-border p-4 mb-3">
+              <div className="text-xs font-semibold text-muted-foreground mb-3 text-center">Architecture</div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="rounded-xl border-2 border-cyan-500/50 bg-cyan-500/10 px-6 py-3 text-center">
+                  <div className="text-xs text-cyan-400 font-bold">MasterPool</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">ZBX native · No admin · Protocol-owned</div>
+                </div>
+                <div className="flex items-center gap-1 text-muted-foreground text-xs">
+                  <div className="w-px h-4 bg-border mx-auto" />
+                </div>
+                <div className="flex gap-3 flex-wrap justify-center">
+                  {["SubPool (ZBX/MYT)", "SubPool (ZBX/NFT)", "SubPool (ZBX/USDC)"].map((sp, i) => (
+                    <div key={i} className="rounded-lg border border-border bg-muted/10 px-3 py-2 text-center">
+                      <div className="text-[10px] font-mono text-foreground">{sp}</div>
+                      <div className="text-[9px] text-muted-foreground mt-0.5">creator fee only</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Rules grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs mb-3">
+              {[
+                { k: "AMM Formula", v: "x × y = k" },
+                { k: "MasterPool Admin", v: "❌ None" },
+                { k: "SubPool Owner", v: "❌ None" },
+                { k: "Creator role", v: "Fee recipient only" },
+                { k: "Manual Add/Remove", v: "❌ Permanently off" },
+                { k: "Default fee", v: "0.3% (30 bps)" },
+              ].map(r => (
+                <div key={r.k} className="rounded-lg bg-muted/20 p-3 border border-border/50">
+                  <div className="text-muted-foreground">{r.k}</div>
+                  <div className="font-mono font-semibold text-foreground mt-0.5">{r.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Key rules box */}
+            <div className="rounded-lg bg-red-500/5 border border-red-500/20 p-3 mb-3 space-y-1 text-xs">
+              <div className="text-xs font-semibold text-red-400 mb-1">Anti Rug Pull — Hard Rules:</div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span><code className="font-mono">add_liquidity()</code> → <strong className="text-red-300">abort E_MANUAL_LIQUIDITY_DISABLED</strong> — koi manual add nahi</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span><code className="font-mono">remove_liquidity()</code> → <strong className="text-red-300">abort E_REMOVE_LIQUIDITY_DISABLED</strong> — drain kabhi nahi</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>SubPool mein koi <code className="font-mono">owner</code> field hi nahi — rug pull structurally impossible</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-cyan-400">→</span><span>Liquidity sirf buy/sell trades se adjust hoti hai — pure AMM</span></div>
+            </div>
+
+            <CodeBlock code={MASTER_POOL_CODE} />
           </Section>
 
           {/* ZBX Pay ID */}

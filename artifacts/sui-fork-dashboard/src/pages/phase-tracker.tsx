@@ -101,6 +101,27 @@ const CHANGES_LOG = [
       { type: "change", text: "Name validation: empty string aur special chars blocked — alphanumeric + underscore only" },
     ],
   },
+  {
+    phase: "P4",
+    date: "Apr 21, 2026",
+    color: "text-cyan-400",
+    dot: "bg-cyan-500",
+    label: "Master Pool AMM",
+    entries: [
+      { type: "add", text: "Module: zebvix::master_pool — ZBX native coin ka ek global decentralized base pool (shared object, no admin key)" },
+      { type: "add", text: "MasterPool struct { zbx_reserve: Balance<ZBX>, total_volume: u64 } — koi bhi admin nahi, protocol-owned" },
+      { type: "add", text: "Module: zebvix::sub_pool — koi bhi SubPool<T> create kar sakta hai (linked to MasterPool)" },
+      { type: "add", text: "SubPool<T> struct { token_reserve: Balance<T>, zbx_reserve: Balance<ZBX>, creator_fee_addr: address, fee_bps: u64 } — no owner field" },
+      { type: "add", text: "AMM formula: x × y = k (constant product) — price automatic adjust hoti hai buy/sell se" },
+      { type: "add", text: "buy<T>(sub_pool, zbx_in, ctx): ZBX de do, token lo — liquidity pool automatically adjust" },
+      { type: "add", text: "sell<T>(sub_pool, token_in, ctx): token do, ZBX lo — pool khud rebalance karta hai" },
+      { type: "add", text: "Creator fee: har buy/sell/swap pe fee_bps (e.g. 30 bps = 0.3%) creator_fee_addr ko jaati hai" },
+      { type: "add", text: "MANUAL_LIQUIDITY_DISABLED: bool = true — add_liquidity() aur remove_liquidity() permanently abort" },
+      { type: "add", text: "One-way liquidity add: agar koi ZBX deposit kar bhi de to remove_liquidity = abort — permanently locked in pool" },
+      { type: "change", text: "Liquidity sirf trades se adjust hoti hai — buy se token badhta hai ZBX kamta hai, sell se ulta" },
+      { type: "change", text: "SubPool creator = fee recipient only — koi ownership, no pause, no rug pull, no drain function" },
+    ],
+  },
 ];
 
 const PHASES = [
@@ -431,6 +452,7 @@ export default function PhaseTracker() {
                         const col = c.includes("orange") ? "bg-orange-500/15 text-orange-400 border-orange-500/20"
                                   : c.includes("red")    ? "bg-red-500/15 text-red-400 border-red-500/20"
                                   : c.includes("violet") ? "bg-violet-500/15 text-violet-400 border-violet-500/20"
+                                  : c.includes("cyan")   ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/20"
                                   : c.includes("blue")   ? "bg-blue-500/15 text-blue-400 border-blue-500/20"
                                   : c.includes("green")  ? "bg-green-500/15 text-green-400 border-green-500/20"
                                   : c.includes("yellow") ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/20"
