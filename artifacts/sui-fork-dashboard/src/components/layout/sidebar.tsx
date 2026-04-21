@@ -20,7 +20,8 @@ import {
   ArrowUpDown,
   Map,
   Paintbrush,
-  ListChecks
+  ListChecks,
+  Calculator
 } from "lucide-react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { Progress } from "@/components/ui/progress";
@@ -42,6 +43,7 @@ const CORE_NAV = [
 
 const ADDON_NAV = [
   { href: "/phase-tracker", label: "Phase Tracker", icon: ListChecks },
+  { href: "/economic-design", label: "Economic Designer", icon: Calculator },
   { href: "/implementation", label: "Implementation Roadmap", icon: Map },
   { href: "/rebranding", label: "Rebranding Guide", icon: Paintbrush },
   { href: "/zbx-tokenomics", label: "ZBX Tokenomics Design", icon: Coins },
