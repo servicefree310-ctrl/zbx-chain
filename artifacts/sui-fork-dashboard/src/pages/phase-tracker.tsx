@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, Circle, ChevronDown, ChevronRight, Trophy, GitCommit, Plus, Edit2 } from "lucide-react";
+import { CheckCircle2, Circle, ChevronDown, ChevronRight, Trophy, GitCommit, Plus, Edit2, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const STORAGE_KEY = "zebvix-phase-tracker";
@@ -163,6 +163,11 @@ const CHANGES_LOG = [
       { type: "add", text: "E_BOND_WRONG_AMOUNT = 10 — agar bond coin exactly 100 ZBX nahi → abort" },
       { type: "add", text: "ValidatorStake struct: node_bond: Balance<ZBX> field add kiya (100 ZBX locked)" },
       { type: "add", text: "stake(pool, zbx_coin, bond_coin, node_wallet, ctx): validator self-stake + 100 ZBX bond — 10K min, 250K max" },
+      { type: "fix", text: "BUG FIX: claim_node_reward() ab last_reward_epoch update karta hai — infinite reward exploit band" },
+      { type: "fix", text: "BUG FIX: unstake() mein active_validators > 0 guard — u64 underflow nahi hoga" },
+      { type: "fix", text: "BUG FIX: claim_rewards() + claim_node_reward() mein epoch underflow guard (last >= current → return zero)" },
+      { type: "fix", text: "BUG FIX: step3_constants.sh — is_slot_full() ab MAX_VALIDATOR_STAKE_MIST use karta hai (pehle undefined MAX_STAKE_PER_VALIDATOR tha)" },
+      { type: "fix", text: "MIGRATION: step2/step3/step4 shell scripts python3 → Node.js (VPS pe python3 available nahi)" },
       { type: "add", text: "unstake(pool, stake_obj, ctx): validator exit — 1 epoch lock" },
       { type: "add", text: "claim_rewards(pool, stake_obj, ctx): 120% APR claim — validator share" },
       { type: "add", text: "claim_node_reward(pool, node_wallet, ctx): 5 ZBX/day per node — daily claim (delegator ko nahi milta)" },
@@ -581,11 +586,13 @@ export default function PhaseTracker() {
                         <div key={j} className="flex items-start gap-2.5 text-sm">
                           {entry.type === "add"
                             ? <Plus className="h-3.5 w-3.5 text-green-400 shrink-0 mt-0.5" />
-                            : <Edit2 className="h-3.5 w-3.5 text-yellow-400 shrink-0 mt-0.5" />
+                            : entry.type === "fix"
+                              ? <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />
+                              : <Edit2 className="h-3.5 w-3.5 text-yellow-400 shrink-0 mt-0.5" />
                           }
                           <span className={entry.type === "add" ? "text-foreground" : "text-foreground/80"}>
-                            <span className={`text-xs font-mono px-1.5 py-0.5 rounded mr-2 ${entry.type === "add" ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"}`}>
-                              {entry.type === "add" ? "+add" : "~mod"}
+                            <span className={`text-xs font-mono px-1.5 py-0.5 rounded mr-2 ${entry.type === "add" ? "bg-green-500/10 text-green-400" : entry.type === "fix" ? "bg-red-500/10 text-red-400" : "bg-yellow-500/10 text-yellow-400"}`}>
+                              {entry.type === "add" ? "+add" : entry.type === "fix" ? "!fix" : "~mod"}
                             </span>
                             {entry.text}
                           </span>

@@ -268,7 +268,11 @@ module zebvix::staking_pool {
 
         table::remove(&mut pool.slot_stakes,    validator_addr);
         table::remove(&mut pool.slot_delegated, validator_addr);
-        pool.active_validators = pool.active_validators - 1;
+        // Guard against u64 underflow — active_validators should never be 0 here
+        // but defensive check avoids panic on corrupted state
+        if (pool.active_validators > 0) {
+            pool.active_validators = pool.active_validators - 1;
+        };
 
         // Remove only the validator's own stake from total (delegators undelegate separately)
         pool.total_staked_mist = if (pool.total_staked_mist > amount) {
@@ -296,11 +300,12 @@ module zebvix::staking_pool {
         stake_obj: &mut ValidatorStake,
         ctx:       &mut TxContext,
     ): Coin<ZBX> {
-        let current_epoch  = tx_context::epoch(ctx);
-        let epochs_elapsed = current_epoch - stake_obj.last_reward_epoch;
-        if (epochs_elapsed == 0) {
+        let current_epoch = tx_context::epoch(ctx);
+        // Guard: prevent u64 underflow if last_reward_epoch > current_epoch
+        if (stake_obj.last_reward_epoch >= current_epoch) {
             return coin::from_balance(balance::zero(), ctx)
         };
+        let epochs_elapsed = current_epoch - stake_obj.last_reward_epoch;
 
         let staked_amount = balance::value(&stake_obj.staked_balance);
 
@@ -324,14 +329,23 @@ module zebvix::staking_pool {
     }
 
     // ── VALIDATOR: claim node daily reward (5 ZBX/day for running a node) ──
+    // BUG-FIX: last_reward_epoch MUST be updated after payment to prevent
+    //          infinite re-claim of the same epochs.
     public fun claim_node_reward(
         pool:      &mut StakingPool,
         stake_obj: &mut ValidatorStake,
         ctx:       &mut TxContext,
     ): Coin<ZBX> {
         let current_epoch  = tx_context::epoch(ctx);
+        // Guard: if last_reward_epoch somehow > current (should not happen), return zero
+        if (stake_obj.last_reward_epoch >= current_epoch) {
+            return coin::from_balance(balance::zero(), ctx)
+        };
         let epochs_elapsed = current_epoch - stake_obj.last_reward_epoch;
         let node_reward    = NODE_DAILY_REWARD_MIST * epochs_elapsed;
+
+        // ⚠️  MUST update before paying — prevents re-entry / double-claim
+        stake_obj.last_reward_epoch = current_epoch;
 
         let available  = balance::value(&pool.reward_balance);
         let pay_amount = if (node_reward > available) { available } else { node_reward };

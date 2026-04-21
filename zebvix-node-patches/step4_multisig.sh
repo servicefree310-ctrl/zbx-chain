@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Step 4: MultiSig rules — thresholds + constants
+# Uses Node.js for file edits (python3 NOT available on VPS)
 
 set -euo pipefail
 
@@ -13,14 +14,12 @@ fi
 
 echo "  Found: $MULTISIG_RS"
 
-python3 << PYEOF
-import re
+node << JSEOF
+const fs = require('fs');
+const file = "${MULTISIG_RS}";
+let content = fs.readFileSync(file, 'utf8');
 
-multisig_file = "$MULTISIG_RS"
-with open(multisig_file, "r") as f:
-    content = f.read()
-
-MULTISIG_CONSTS = '''
+const MULTISIG_CONSTS = \`
 // ================================================================
 // ZEBVIX MULTISIG THRESHOLD RULES
 // ================================================================
@@ -43,23 +42,21 @@ pub const VALIDATOR_KEY_ROTATION_N: u16 = 5;
 pub fn validate_zbx_threshold(weights_sum: u16, threshold: u16) -> bool {
     threshold > 0 && threshold <= weights_sum
 }
-'''
+\`;
 
-if "TREASURY_MULTISIG_M" not in content:
-    # Insert after the first pub use or use statement block
-    insert_pos = content.find("pub const MAX_SIGNER_IN_MULTISIG")
-    if insert_pos >= 0:
-        end_of_line = content.find("\n", insert_pos) + 1
-        content = content[:end_of_line] + MULTISIG_CONSTS + content[end_of_line:]
-    else:
-        # Fallback: add at end
-        content += MULTISIG_CONSTS
-
-    with open(multisig_file, "w") as f:
-        f.write(content)
-    print("  MultiSig constants added.")
-else:
-    print("  MultiSig already patched.")
-PYEOF
+if (!content.includes('TREASURY_MULTISIG_M')) {
+    const insertPos = content.indexOf('pub const MAX_SIGNER_IN_MULTISIG');
+    if (insertPos >= 0) {
+        const endOfLine = content.indexOf('\n', insertPos) + 1;
+        content = content.slice(0, endOfLine) + MULTISIG_CONSTS + content.slice(endOfLine);
+    } else {
+        content += MULTISIG_CONSTS;
+    }
+    fs.writeFileSync(file, content);
+    console.log('  MultiSig constants added ✓');
+} else {
+    console.log('  MultiSig already patched, skipping.');
+}
+JSEOF
 
 echo "  Step 4 done."

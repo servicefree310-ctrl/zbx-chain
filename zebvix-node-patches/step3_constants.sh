@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Step 3: Tokenomics constants + burn cap in gas_coin.rs
+# Uses Node.js for file edits (python3 NOT available on VPS)
 
 set -euo pipefail
 
@@ -14,12 +15,13 @@ if grep -q "MAX_TOTAL_SUPPLY_ZBX" "$GAS_COIN"; then
     exit 0
 fi
 
-# Find the end of existing pub const MIST_PER_ZBX line and insert after it
-python3 << 'PYEOF'
-with open("crates/sui-types/src/gas_coin.rs", "r") as f:
-    content = f.read()
+# Use Node.js to insert constants (python3 not available on VPS)
+node << 'JSEOF'
+const fs = require('fs');
+const file = "crates/sui-types/src/gas_coin.rs";
+let content = fs.readFileSync(file, 'utf8');
 
-ZEBVIX_CONSTANTS = '''
+const ZEBVIX_CONSTANTS = `
 // ================================================================
 // ZEBVIX TOKENOMICS CONSTANTS
 // ================================================================
@@ -84,9 +86,9 @@ pub fn is_burn_allowed(total_burned_mist: u64) -> bool {
 }
 
 /// Returns halving divisor based on total minted
-/// Phase 1 (0–50M): divisor=1 → full reward
+/// Phase 1 (0–50M):    divisor=1 → full reward
 /// Phase 2 (50M–100M): divisor=2 → half reward
-/// Phase 3 (100M+): divisor=4 → quarter reward
+/// Phase 3 (100M+):    divisor=4 → quarter reward
 pub fn get_halving_multiplier(total_minted_zbx: u64) -> u64 {
     if total_minted_zbx < FIRST_HALVING_ZBX {
         1
@@ -112,7 +114,6 @@ pub fn split_gas_fee(fee_mist: u64, total_burned_mist: u64) -> (u64, u64, u64, u
     let burn_raw        = fee_mist * GAS_BURN_BPS       / 10_000;
 
     // If burn cap reached, redirect burn share to validators
-    // If burn cap reached, redirect burn share to validators
     let (burn_share, validator_final) = if is_burn_allowed(total_burned_mist) {
         (burn_raw, validator_share)
     } else {
@@ -127,29 +128,28 @@ pub fn is_validator_cap_reached(active_validators: u64) -> bool {
     active_validators >= MAX_VALIDATORS
 }
 
-/// Check if a validator's stake slot is full
-pub fn is_slot_full(current_slot_stake_mist: u64) -> bool {
-    current_slot_stake_mist >= MAX_STAKE_PER_VALIDATOR * MIST_PER_ZBX
+/// Check if a validator's own stake is at the maximum
+/// Note: uses MAX_VALIDATOR_STAKE_MIST (validator's OWN stake cap, not delegated)
+pub fn is_validator_stake_maxed(validator_own_stake_mist: u64) -> bool {
+    validator_own_stake_mist >= MAX_VALIDATOR_STAKE_MIST
 }
-'''
+`;
 
-# Remove old MIST_PER_SUI / TOTAL_SUPPLY_SUI constants if present
-import re
-content = re.sub(r'pub const MIST_PER_SUI.*?;', '', content)
-content = re.sub(r'pub const TOTAL_SUPPLY_SUI.*?;', '', content)
+// Remove old SUI constants if present
+content = content.replace(/pub const MIST_PER_SUI.*?;\n/g, '');
+content = content.replace(/pub const TOTAL_SUPPLY_SUI.*?;\n/g, '');
 
-# Add Zebvix constants at the top after the first use statement
-insert_after = "use serde::{Deserialize, Serialize};"
-if insert_after in content:
-    content = content.replace(insert_after, insert_after + "\n" + ZEBVIX_CONSTANTS, 1)
-else:
-    # Fallback: prepend to file after any #![...] attrs
-    content = ZEBVIX_CONSTANTS + "\n" + content
+// Insert after first `use serde::{Deserialize, Serialize};` line
+const insertAfter = 'use serde::{Deserialize, Serialize};';
+if (content.includes(insertAfter)) {
+    content = content.replace(insertAfter, insertAfter + '\n' + ZEBVIX_CONSTANTS);
+} else {
+    // Fallback: prepend to file
+    content = ZEBVIX_CONSTANTS + '\n' + content;
+}
 
-with open("crates/sui-types/src/gas_coin.rs", "w") as f:
-    f.write(content)
-
-print("  ZBX constants written to gas_coin.rs")
-PYEOF
+fs.writeFileSync(file, content);
+console.log('  ZBX constants written to gas_coin.rs ✓');
+JSEOF
 
 echo "  Step 3 done."

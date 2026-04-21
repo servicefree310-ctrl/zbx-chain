@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Step 2: EVM-compatible 20-byte address
 # Modifies: crates/sui-types/src/base_types.rs
+# Uses Node.js for file edits (python3 NOT available on VPS)
 
 set -euo pipefail
 
@@ -11,75 +12,49 @@ echo "  [2.1] SUI_ADDRESS_LENGTH: 32 → 20"
 sed -i 's/pub const SUI_ADDRESS_LENGTH: usize = 32;/pub const SUI_ADDRESS_LENGTH: usize = 20; \/\/ ZBX: EVM-compatible 20-byte address/' "$BASE_TYPES"
 
 echo "  [2.2] SuiPublicKey::try_from — last 20 bytes of Blake2b256"
-# This patches the from_bytes / address derivation to use last 20 bytes
-# Pattern: wherever hash.as_ref() is sliced to get address, use &hash[12..] instead of hash.as_ref()
-python3 << 'PYEOF'
-import re, sys
+node << 'JSEOF'
+const fs = require('fs');
+const file = "crates/sui-types/src/base_types.rs";
+let content = fs.readFileSync(file, 'utf8');
 
-with open("crates/sui-types/src/base_types.rs", "r") as f:
-    content = f.read()
-
-# Patch 1: SuiPublicKey derivation — take last 20 bytes from 32-byte hash
-# Look for the pattern where Blake2b256 hash is used to derive address
-# Original: SuiAddress((&hash).into()) — replaces full 32 bytes
-# New: take last 20 bytes
-
-# Pattern for address derivation from public key hash (function that was ~line 922)
-old1 = r'(fn try_from\(pk: &SuiPublicKey\).*?)(hasher\.finalize\(\))(.*?SuiAddress\()(&?hash(?:\.as_ref\(\))?)((?:\[.*?\])?)'
-# This is complex, use simpler targeted replacements
-
-# Replace specific address-length slice patterns
+// Patch 1: Array literal buffer size
 content = content.replace(
     "let mut result = [0u8; SUI_ADDRESS_LENGTH];",
     "let mut result = [0u8; SUI_ADDRESS_LENGTH]; // 20 bytes"
-)
+);
 
-# Where Blake2b256 hash (32 bytes) → address (20 bytes): take last 20
-content = re.sub(
-    r'(SuiAddress\()(&hash(?:\.as_ref\(\))?)\[\.\.SUI_ADDRESS_LENGTH\](\))',
-    r'\1&hash[12..]\3  // ZBX: last 20 bytes of 32-byte hash',
-    content
-)
-content = re.sub(
-    r'(SuiAddress\()(&hash)\[(\d+)\.\.(\d+)\](\))',
-    lambda m: f'{m.group(1)}&hash[12..]{m.group(5)}  // ZBX: last 20 bytes',
-    content
-)
+// Patch 2: Blake2b256 hash (32 bytes) → address (20 bytes): take last 20
+// Pattern: SuiAddress(&hash[..SUI_ADDRESS_LENGTH]) → SuiAddress(&hash[12..])
+content = content.replace(
+    /SuiAddress\((&hash(?:\.as_ref\(\))?)\[\.\.SUI_ADDRESS_LENGTH\]\)/g,
+    'SuiAddress($1[12..])  // ZBX: last 20 bytes of 32-byte hash'
+);
 
-# ObjectID to SuiAddress conversion — last 20 bytes
-content = re.sub(
-    r'(fn from\(id: ObjectID\).*?SuiAddress\()(&id\.0\.as_ref\(\))\[\.\.SUI_ADDRESS_LENGTH\](\))',
-    r'\1&id.0.as_ref()[12..]\3  // ZBX: last 20 bytes',
-    content,
-    flags=re.DOTALL
-)
+// Patch 3: Numeric slice fallbacks
+content = content.replace(
+    /SuiAddress\((&hash)\[(\d+)\.\.(\d+)\]\)/g,
+    'SuiAddress($1[12..])  // ZBX: last 20 bytes'
+);
 
-with open("crates/sui-types/src/base_types.rs", "w") as f:
-    f.write(content)
-
-print("  Python patch applied to base_types.rs")
-PYEOF
+fs.writeFileSync(file, content);
+console.log('  Address slice patch applied to base_types.rs ✓');
+JSEOF
 
 echo "  [2.3] AccountAddress ↔ SuiAddress conversions"
-python3 << 'PYEOF'
-import re
+node << 'JSEOF'
+const fs = require('fs');
+const file = "crates/sui-types/src/base_types.rs";
+let content = fs.readFileSync(file, 'utf8');
 
-with open("crates/sui-types/src/base_types.rs", "r") as f:
-    content = f.read()
+// SuiAddress → AccountAddress: pad 20 → 32 bytes
+content = content.replace(
+    /AccountAddress::new\(self\.0\)/g,
+    'AccountAddress::new({ let mut b = [0u8; 32]; b[12..].copy_from_slice(&self.0); b })'
+);
 
-# SuiAddress → AccountAddress: pad 20 → 32 bytes
-# Find conversion where 20-byte SuiAddress is expanded to 32-byte AccountAddress
-content = re.sub(
-    r'AccountAddress::new\(self\.0\)',
-    'AccountAddress::new({ let mut b = [0u8; 32]; b[12..].copy_from_slice(&self.0); b })',
-    content
-)
-
-with open("crates/sui-types/src/base_types.rs", "w") as f:
-    f.write(content)
-
-print("  AccountAddress padding patch applied")
-PYEOF
+fs.writeFileSync(file, content);
+console.log('  AccountAddress padding patch applied ✓');
+JSEOF
 
 echo "  [2.4] sui_sdk_types_conversions.rs — address fix"
 SDK_CONV="crates/sui-sdk-types/src/types/address.rs"
