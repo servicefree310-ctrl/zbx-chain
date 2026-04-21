@@ -14,6 +14,7 @@ import Network from "@/pages/network";
 import Tokenomics from "@/pages/tokenomics";
 import Customization from "@/pages/customization";
 import Checklist from "@/pages/checklist";
+import Production from "@/pages/production";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ function Router() {
         <Route path="/tokenomics" component={Tokenomics} />
         <Route path="/customization" component={Customization} />
         <Route path="/checklist" component={Checklist} />
+        <Route path="/production" component={Production} />
         <Route component={NotFound} />
       </Switch>
     </Shell>

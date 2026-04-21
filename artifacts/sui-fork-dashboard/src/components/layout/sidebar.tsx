@@ -9,7 +9,8 @@ import {
   Coins, 
   Settings, 
   CheckSquare,
-  Menu
+  Menu,
+  Rocket
 } from "lucide-react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { Progress } from "@/components/ui/progress";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/tokenomics", label: "Tokenomics", icon: Coins },
   { href: "/customization", label: "Customization", icon: Settings },
   { href: "/checklist", label: "Launch Checklist", icon: CheckSquare },
+  { href: "/production", label: "Production Chain", icon: Rocket },
 ];
 
 export function Sidebar() {
