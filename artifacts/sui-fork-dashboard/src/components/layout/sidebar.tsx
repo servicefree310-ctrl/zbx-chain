@@ -18,7 +18,8 @@ import {
   ArrowLeftRight,
   TrendingUp,
   ArrowUpDown,
-  Map
+  Map,
+  Paintbrush
 } from "lucide-react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { Progress } from "@/components/ui/progress";
@@ -40,6 +41,7 @@ const CORE_NAV = [
 
 const ADDON_NAV = [
   { href: "/implementation", label: "Implementation Roadmap", icon: Map },
+  { href: "/rebranding", label: "Rebranding Guide", icon: Paintbrush },
   { href: "/zbx-tokenomics", label: "ZBX Tokenomics Design", icon: Coins },
   { href: "/block-explorer", label: "Block Explorer", icon: Search },
   { href: "/wallet", label: "ZBX Wallet", icon: Wallet },

@@ -24,6 +24,7 @@ import Staking from "@/pages/staking";
 import Dex from "@/pages/dex";
 import ZbxTokenomics from "@/pages/zbx-tokenomics";
 import Implementation from "@/pages/implementation";
+import Rebranding from "@/pages/rebranding";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ function Router() {
         <Route path="/dex" component={Dex} />
         <Route path="/zbx-tokenomics" component={ZbxTokenomics} />
         <Route path="/implementation" component={Implementation} />
+        <Route path="/rebranding" component={Rebranding} />
         <Route component={NotFound} />
       </Switch>
     </Shell>
