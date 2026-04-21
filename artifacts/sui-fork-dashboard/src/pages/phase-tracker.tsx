@@ -1,38 +1,79 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, Circle, ChevronDown, ChevronRight, Trophy, Lock } from "lucide-react";
+import { CheckCircle2, Circle, ChevronDown, ChevronRight, Trophy, GitCommit, Plus, Edit2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const STORAGE_KEY = "zebvix-phase-tracker";
 
+const CHANGES_LOG = [
+  {
+    phase: "P1",
+    date: "Apr 21, 2025",
+    color: "text-green-400",
+    dot: "bg-green-500",
+    entries: [
+      { type: "add", text: "Binary name: sui-node → zebvix-node (Cargo.toml [[bin]] section)" },
+      { type: "change", text: "Config directory: ~/.sui → ~/.zebvix" },
+      { type: "change", text: "Token constant: MIST_PER_SUI → MIST_PER_ZBX (gas_coin.rs)" },
+      { type: "change", text: "Token constant: TOTAL_SUPPLY_SUI → TOTAL_SUPPLY_ZBX" },
+      { type: "change", text: "governance.rs import fix: MIST_PER_SUI → MIST_PER_ZBX" },
+      { type: "add", text: "114MB binary built: /usr/local/bin/zebvix-node" },
+    ],
+  },
+  {
+    phase: "P2",
+    date: "Apr 21, 2025",
+    color: "text-yellow-400",
+    dot: "bg-yellow-500",
+    entries: [
+      { type: "change", text: "SUI_ADDRESS_LENGTH: 32 → 20 bytes (EVM-compatible)" },
+      { type: "change", text: "Address derivation: last 20 bytes of Blake2b256 hash (4 functions)" },
+      { type: "change", text: "ObjectID → SuiAddress: last 20 bytes of 32-byte ID" },
+      { type: "change", text: "AccountAddress → SuiAddress: last 20 bytes" },
+      { type: "change", text: "SuiAddress → AccountAddress: pad with 12 zero bytes" },
+      { type: "change", text: "sui_sdk_types_conversions.rs: address conversion fix" },
+    ],
+  },
+  {
+    phase: "P3",
+    date: "Apr 21, 2025",
+    color: "text-blue-400",
+    dot: "bg-blue-500",
+    entries: [
+      { type: "add", text: "MAX_TOTAL_SUPPLY_ZBX = 150,000,000 (hard cap)" },
+      { type: "add", text: "GENESIS_SUPPLY_ZBX = 2,000,000" },
+      { type: "add", text: "FIRST_HALVING_ZBX = 50,000,000" },
+      { type: "add", text: "SECOND_HALVING_ZBX = 100,000,000" },
+      { type: "add", text: "INITIAL_BLOCK_REWARD_MIST = 100,000,000 (0.1 ZBX)" },
+      { type: "add", text: "GAS_VALIDATOR_BPS = 7200 (72%)" },
+      { type: "add", text: "GAS_TREASURY_BPS = 1800 (18%)" },
+      { type: "add", text: "GAS_BURN_BPS = 1000 (10% burn 🔥)" },
+      { type: "add", text: "get_halving_multiplier(total_minted) function" },
+      { type: "add", text: "adjusted_block_reward(total_minted) function" },
+    ],
+  },
+];
+
 const PHASES = [
   {
-    id: "P1",
-    title: "Binary Build",
-    color: "from-green-500 to-emerald-600",
-    lightColor: "text-green-400",
-    borderColor: "border-green-500/40",
-    bgColor: "bg-green-500/8",
-    progressColor: "bg-green-500",
+    id: "P1", title: "Binary Build",
+    color: "from-green-500 to-emerald-600", lightColor: "text-green-400",
+    borderColor: "border-green-500/40", bgColor: "bg-green-500/5",
     points: [
       { id: "p1_1", text: "Sui repo clone kiya (mainnet-v1.69.2)" },
       { id: "p1_2", text: "Binary naam change kiya: zebvix-node (Cargo.toml [[bin]])" },
       { id: "p1_3", text: "Config dir change kiya: .sui → .zebvix" },
       { id: "p1_4", text: "Token rename kiya: SUI → ZBX (gas_coin.rs)" },
-      { id: "p1_5", text: "MIST_PER_SUI → MIST_PER_ZBX (saari files mein)" },
-      { id: "p1_6", text: "MIST_PER_ZBX → MIST_PER_ZBX governance.rs fix" },
+      { id: "p1_5", text: "MIST_PER_SUI → MIST_PER_ZBX (saari files mein grep + sed)" },
+      { id: "p1_6", text: "governance.rs import fix (MIST_PER_ZBX)" },
       { id: "p1_7", text: "cargo build --release -p sui-node --bin zebvix-node" },
       { id: "p1_8", text: "Binary ready: target/release/zebvix-node (114MB)" },
       { id: "p1_9", text: "/usr/local/bin/zebvix-node mein copy kiya" },
     ],
   },
   {
-    id: "P2",
-    title: "EVM Address Format",
-    color: "from-yellow-500 to-orange-500",
-    lightColor: "text-yellow-400",
-    borderColor: "border-yellow-500/40",
-    bgColor: "bg-yellow-500/8",
-    progressColor: "bg-yellow-500",
+    id: "P2", title: "EVM Address Format",
+    color: "from-yellow-500 to-orange-500", lightColor: "text-yellow-400",
+    borderColor: "border-yellow-500/40", bgColor: "bg-yellow-500/5",
     points: [
       { id: "p2_1", text: "SUI_ADDRESS_LENGTH: 32 → 20 bytes (base_types.rs line 788)" },
       { id: "p2_2", text: "SuiPublicKey derivation: last 20 bytes of hash (line 922)" },
@@ -42,17 +83,13 @@ const PHASES = [
       { id: "p2_6", text: "AccountAddress→SuiAddress: last 20 bytes fix (line 881)" },
       { id: "p2_7", text: "SuiAddress→AccountAddress: pad 20→32 bytes fix (line 1811)" },
       { id: "p2_8", text: "sui_sdk_types_conversions.rs fix (line 218)" },
-      { id: "p2_9", text: "Rebuild successful — 0 errors" },
+      { id: "p2_9", text: "Rebuild successful — 0 compile errors" },
     ],
   },
   {
-    id: "P3",
-    title: "Tokenomics Constants",
-    color: "from-blue-500 to-cyan-500",
-    lightColor: "text-blue-400",
-    borderColor: "border-blue-500/40",
-    bgColor: "bg-blue-500/8",
-    progressColor: "bg-blue-500",
+    id: "P3", title: "Tokenomics Constants",
+    color: "from-blue-500 to-cyan-500", lightColor: "text-blue-400",
+    borderColor: "border-blue-500/40", bgColor: "bg-blue-500/5",
     points: [
       { id: "p3_1", text: "MAX_TOTAL_SUPPLY_ZBX = 150,000,000 add kiya" },
       { id: "p3_2", text: "GENESIS_SUPPLY_ZBX = 2,000,000 add kiya" },
@@ -66,13 +103,9 @@ const PHASES = [
     ],
   },
   {
-    id: "P4",
-    title: "CLI Build & Keypairs",
-    color: "from-purple-500 to-violet-600",
-    lightColor: "text-purple-400",
-    borderColor: "border-purple-500/40",
-    bgColor: "bg-purple-500/8",
-    progressColor: "bg-purple-500",
+    id: "P4", title: "CLI Build & Keypairs",
+    color: "from-purple-500 to-violet-600", lightColor: "text-purple-400",
+    borderColor: "border-purple-500/40", bgColor: "bg-purple-500/5",
     points: [
       { id: "p4_1", text: "cargo build --release -p sui --bin sui" },
       { id: "p4_2", text: "zebvix-cli ban gaya (sui binary copy + rename)" },
@@ -85,15 +118,11 @@ const PHASES = [
     ],
   },
   {
-    id: "P5",
-    title: "Node Launch",
-    color: "from-primary to-cyan-500",
-    lightColor: "text-primary",
-    borderColor: "border-primary/40",
-    bgColor: "bg-primary/8",
-    progressColor: "bg-primary",
+    id: "P5", title: "Node Launch",
+    color: "from-primary to-cyan-500", lightColor: "text-primary",
+    borderColor: "border-primary/40", bgColor: "bg-primary/5",
     points: [
-      { id: "p5_1", text: "systemd service file banaya (/etc/systemd/system/zebvix-node.service)" },
+      { id: "p5_1", text: "systemd service file banaya (zebvix-node.service)" },
       { id: "p5_2", text: "systemctl enable --now zebvix-node" },
       { id: "p5_3", text: "Node start hua — koi crash nahi" },
       { id: "p5_4", text: "RPC respond kar raha hai (curl localhost:9000)" },
@@ -104,13 +133,9 @@ const PHASES = [
     ],
   },
   {
-    id: "P6",
-    title: "Move Contracts",
-    color: "from-pink-500 to-rose-500",
-    lightColor: "text-pink-400",
-    borderColor: "border-pink-500/40",
-    bgColor: "bg-pink-500/8",
-    progressColor: "bg-pink-500",
+    id: "P6", title: "Move Contracts",
+    color: "from-pink-500 to-rose-500", lightColor: "text-pink-400",
+    borderColor: "border-pink-500/40", bgColor: "bg-pink-500/5",
     points: [
       { id: "p6_1", text: "zebvix-cli client new-env --alias zebvix" },
       { id: "p6_2", text: "Test wallet address mila (ZBX mila faucet se)" },
@@ -122,17 +147,13 @@ const PHASES = [
     ],
   },
   {
-    id: "P7",
-    title: "Ecosystem Launch",
-    color: "from-amber-500 to-yellow-500",
-    lightColor: "text-amber-400",
-    borderColor: "border-amber-500/40",
-    bgColor: "bg-amber-500/8",
-    progressColor: "bg-amber-500",
+    id: "P7", title: "Ecosystem Launch",
+    color: "from-amber-500 to-yellow-500", lightColor: "text-amber-400",
+    borderColor: "border-amber-500/40", bgColor: "bg-amber-500/5",
     points: [
       { id: "p7_1", text: "GitHub: ZebvixTech/zebvix-node repo banaya" },
-      { id: "p7_2", text: "GitHub: sui-explorer fork kiya → ZBX Explorer" },
-      { id: "p7_3", text: "GitHub: sui.js fork kiya → zebvix.js SDK" },
+      { id: "p7_2", text: "GitHub: sui-explorer fork → ZBX Explorer" },
+      { id: "p7_3", text: "GitHub: sui.js fork → zebvix.js SDK" },
       { id: "p7_4", text: "Block Explorer deploy kiya (domain pe)" },
       { id: "p7_5", text: "ZBX Wallet Chrome Extension banaya" },
       { id: "p7_6", text: "Testnet Faucet deploy kiya" },
@@ -147,6 +168,7 @@ export default function PhaseTracker() {
   const [openPhases, setOpenPhases] = useState<Record<string, boolean>>(
     Object.fromEntries(PHASES.map(p => [p.id, true]))
   );
+  const [activeTab, setActiveTab] = useState<"tasks" | "changes">("tasks");
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -173,9 +195,7 @@ export default function PhaseTracker() {
   const totalDone = PHASES.flatMap(p => p.points).filter(p => checked[p.id]).length;
   const totalPoints = PHASES.flatMap(p => p.points).length;
   const totalPct = Math.round((totalDone / totalPoints) * 100);
-
   const isPhaseComplete = (phase: typeof PHASES[0]) => phase.points.every(p => checked[p.id]);
-  const isPhaseUnlocked = (idx: number) => idx === 0 || isPhaseComplete(PHASES[idx - 1]);
 
   const resetAll = () => {
     setChecked({});
@@ -190,10 +210,7 @@ export default function PhaseTracker() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Phase Tracker</h1>
           <p className="text-muted-foreground">Zebvix chain launch ka poora progress — phase by phase tick karo</p>
         </div>
-        <button
-          onClick={resetAll}
-          className="text-xs text-muted-foreground hover:text-destructive transition-colors px-3 py-1.5 rounded border border-border hover:border-destructive/50"
-        >
+        <button onClick={resetAll} className="text-xs text-muted-foreground hover:text-destructive transition-colors px-3 py-1.5 rounded border border-border hover:border-destructive/50">
           Reset All
         </button>
       </div>
@@ -213,128 +230,187 @@ export default function PhaseTracker() {
         <Progress value={totalPct} className="h-3" />
         {totalPct === 100 && (
           <div className="flex items-center gap-2 mt-3 text-yellow-400 text-sm font-semibold">
-            <Trophy className="h-4 w-4" />
-            Zebvix Chain fully launched! 🎉
+            <Trophy className="h-4 w-4" /> Zebvix Chain fully launched! 🎉
           </div>
         )}
       </div>
 
       {/* Phase grid summary */}
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-        {PHASES.map((phase, idx) => {
+        {PHASES.map((phase) => {
           const { pct } = phaseProgress(phase);
           const complete = isPhaseComplete(phase);
           return (
-            <button
-              key={phase.id}
+            <button key={phase.id}
               onClick={() => {
-                const el = document.getElementById(`phase-${phase.id}`);
-                el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                setOpenPhases(prev => ({ ...prev, [phase.id]: true }));
+                setActiveTab("tasks");
+                setTimeout(() => {
+                  document.getElementById(`phase-${phase.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  setOpenPhases(prev => ({ ...prev, [phase.id]: true }));
+                }, 50);
               }}
-              className={`rounded-lg p-2 text-center border transition-all hover:scale-105 ${
-                complete
-                  ? "border-green-500/50 bg-green-500/10"
-                  : "border-border bg-muted/20"
-              }`}
+              className={`rounded-lg p-2 text-center border transition-all hover:scale-105 ${complete ? "border-green-500/50 bg-green-500/10" : "border-border bg-muted/20"}`}
             >
-              <div className={`text-xs font-bold ${complete ? "text-green-400" : phase.lightColor}`}>
-                {phase.id}
-              </div>
+              <div className={`text-xs font-bold ${complete ? "text-green-400" : phase.lightColor}`}>{phase.id}</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">{pct}%</div>
             </button>
           );
         })}
       </div>
 
-      {/* Phase sections */}
-      <div className="space-y-3">
-        {PHASES.map((phase, idx) => {
-          const { done, total, pct } = phaseProgress(phase);
-          const unlocked = isPhaseUnlocked(idx);
-          const complete = isPhaseComplete(phase);
-          const isOpen = openPhases[phase.id];
-
-          return (
-            <div
-              key={phase.id}
-              id={`phase-${phase.id}`}
-              className={`rounded-xl border overflow-hidden transition-all ${
-                complete
-                  ? "border-green-500/40 bg-green-500/5"
-                  : unlocked
-                  ? `${phase.borderColor} ${phase.bgColor}`
-                  : "border-border/30 bg-muted/5 opacity-60"
-              }`}
-            >
-              {/* Phase header */}
-              <button
-                onClick={() => togglePhase(phase.id)}
-                className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-white/5 transition-colors"
-                disabled={!unlocked}
-              >
-                {/* Phase badge */}
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${phase.color} flex items-center justify-center text-sm font-bold text-white shrink-0`}>
-                  {complete ? "✓" : phase.id.replace("P", "")}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground">{phase.title}</span>
-                    {!unlocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
-                    {complete && <span className="text-xs text-green-400 font-semibold">Complete!</span>}
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <Progress value={pct} className="h-1.5 flex-1" />
-                    <span className="text-xs text-muted-foreground shrink-0">{done}/{total}</span>
-                  </div>
-                </div>
-
-                {isOpen
-                  ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                  : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                }
-              </button>
-
-              {/* Points */}
-              {isOpen && unlocked && (
-                <div className="px-5 pb-4 space-y-2">
-                  {phase.points.map((point, i) => (
-                    <button
-                      key={point.id}
-                      onClick={() => toggle(point.id)}
-                      className="w-full flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors text-left group"
-                    >
-                      <div className="mt-0.5 shrink-0">
-                        {checked[point.id]
-                          ? <CheckCircle2 className={`h-5 w-5 ${complete ? "text-green-400" : phase.lightColor}`} />
-                          : <Circle className="h-5 w-5 text-muted-foreground group-hover:text-foreground/60 transition-colors" />
-                        }
-                      </div>
-                      <span className={`text-sm leading-relaxed ${
-                        checked[point.id]
-                          ? "line-through text-muted-foreground"
-                          : "text-foreground"
-                      }`}>
-                        <span className="text-muted-foreground text-xs font-mono mr-2">{i + 1}.</span>
-                        {point.text}
-                      </span>
-                    </button>
-                  ))}
-
-                  {/* Phase complete message */}
-                  {complete && (
-                    <div className={`mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-semibold flex items-center gap-2`}>
-                      <Trophy className="h-4 w-4" />
-                      Phase {phase.id} complete! Next phase unlock ho gaya 🎉
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-muted/20 p-1 rounded-lg border border-border w-fit">
+        <button
+          onClick={() => setActiveTab("tasks")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "tasks" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          ✅ Tasks
+        </button>
+        <button
+          onClick={() => setActiveTab("changes")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "changes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          📝 Changes Log
+        </button>
       </div>
+
+      {/* TASKS TAB */}
+      {activeTab === "tasks" && (
+        <div className="space-y-3">
+          {PHASES.map((phase) => {
+            const { done, total, pct } = phaseProgress(phase);
+            const complete = isPhaseComplete(phase);
+            const isOpen = openPhases[phase.id];
+
+            return (
+              <div key={phase.id} id={`phase-${phase.id}`}
+                className={`rounded-xl border overflow-hidden transition-all ${complete ? "border-green-500/40 bg-green-500/5" : `${phase.borderColor} ${phase.bgColor}`}`}
+              >
+                <button onClick={() => togglePhase(phase.id)}
+                  className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-white/5 transition-colors"
+                >
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${phase.color} flex items-center justify-center text-sm font-bold text-white shrink-0`}>
+                    {complete ? "✓" : phase.id.replace("P", "")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-foreground">{phase.title}</span>
+                      {complete && <span className="text-xs text-green-400 font-semibold">Complete!</span>}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <Progress value={pct} className="h-1.5 flex-1" />
+                      <span className="text-xs text-muted-foreground shrink-0">{done}/{total}</span>
+                    </div>
+                  </div>
+                  {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                </button>
+
+                {isOpen && (
+                  <div className="px-5 pb-4 space-y-1.5">
+                    {phase.points.map((point, i) => (
+                      <button key={point.id} onClick={() => toggle(point.id)}
+                        className="w-full flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors text-left group"
+                      >
+                        <div className="mt-0.5 shrink-0">
+                          {checked[point.id]
+                            ? <CheckCircle2 className={`h-5 w-5 ${complete ? "text-green-400" : phase.lightColor}`} />
+                            : <Circle className="h-5 w-5 text-muted-foreground group-hover:text-foreground/60 transition-colors" />
+                          }
+                        </div>
+                        <span className={`text-sm leading-relaxed ${checked[point.id] ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                          <span className="text-muted-foreground text-xs font-mono mr-2">{i + 1}.</span>
+                          {point.text}
+                        </span>
+                      </button>
+                    ))}
+                    {complete && (
+                      <div className="mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-semibold flex items-center gap-2">
+                        <Trophy className="h-4 w-4" /> Phase {phase.id} complete! 🎉
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* CHANGES LOG TAB */}
+      {activeTab === "changes" && (
+        <div className="space-y-2">
+          <div className="text-sm text-muted-foreground mb-4">
+            Sui source code mein kya-kya change kiya — exact file references ke saath
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3 text-center">
+              <div className="text-xl font-bold text-green-400">
+                {CHANGES_LOG.flatMap(c => c.entries).filter(e => e.type === "add").length}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">New additions</div>
+            </div>
+            <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-center">
+              <div className="text-xl font-bold text-yellow-400">
+                {CHANGES_LOG.flatMap(c => c.entries).filter(e => e.type === "change").length}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">Modified</div>
+            </div>
+          </div>
+
+          {/* Timeline */}
+          <div className="relative">
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
+            <div className="space-y-6">
+              {CHANGES_LOG.map((log, i) => (
+                <div key={i} className="relative pl-10">
+                  {/* Dot */}
+                  <div className={`absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-background ${log.dot}`} />
+
+                  <div className="rounded-xl border border-border bg-muted/5 overflow-hidden">
+                    {/* Log header */}
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+                      <GitCommit className={`h-4 w-4 ${log.color} shrink-0`} />
+                      <span className={`font-bold text-sm ${log.color}`}>{log.phase}</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {PHASES.find(p => p.id === log.phase)?.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-auto">{log.date}</span>
+                    </div>
+
+                    {/* Entries */}
+                    <div className="px-4 py-3 space-y-2">
+                      {log.entries.map((entry, j) => (
+                        <div key={j} className="flex items-start gap-2.5 text-sm">
+                          {entry.type === "add"
+                            ? <Plus className="h-3.5 w-3.5 text-green-400 shrink-0 mt-0.5" />
+                            : <Edit2 className="h-3.5 w-3.5 text-yellow-400 shrink-0 mt-0.5" />
+                          }
+                          <span className={entry.type === "add" ? "text-foreground" : "text-foreground/80"}>
+                            <span className={`text-xs font-mono px-1.5 py-0.5 rounded mr-2 ${entry.type === "add" ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"}`}>
+                              {entry.type === "add" ? "+add" : "~mod"}
+                            </span>
+                            {entry.text}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Future phases placeholder */}
+              <div className="relative pl-10 opacity-40">
+                <div className="absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-border bg-muted" />
+                <div className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                  P4 – P7 changes yahaan aayenge jab complete honge...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
