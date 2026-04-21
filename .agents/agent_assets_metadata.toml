@@ -6,3 +6,9 @@ id = "OoWVMTCdLxL4ByhdeHoCP"
 uri = "file://zebvix-chain-patches.tar.gz"
 type = "unspecified"
 title = "zebvix-chain-patches.tar.gz — Zebvix Chain Final Patches"
+
+[[outputs]]
+id = "gZJ4vWcea7Digo2czosZY"
+uri = "file://zebvix-full-source.tar.gz"
+type = "unspecified"
+title = "zebvix-full-source.tar.gz — Complete Zebvix Chain Source Code (78MB)"
