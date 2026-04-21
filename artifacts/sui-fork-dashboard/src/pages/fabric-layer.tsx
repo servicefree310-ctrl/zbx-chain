@@ -403,29 +403,31 @@ const PAY_ID_CODE = `module zebvix::pay_id {
     // ── Global registry — chain pe ek hi shared instance ──
     struct PayIdRegistry has key {
         id: UID,
-        // name_str → owner_address  (e.g. "rahul" → 0xABC...)
+        // pay_id_name → owner_address  (e.g. "rahul" → 0xABC...)
         name_to_addr: Table<String, address>,
-        // owner_address → name_str  (ek address = ek hi ID)
+        // owner_address → pay_id_name  (ek address = ek hi ID)
         addr_to_name: Table<address, String>,
     }
 
-    // ── On-chain PayId object — key only (no store = non-transferable, permanent) ──
+    // ── On-chain PayId object — key only (non-transferable, permanent) ──
     struct PayId has key {
         id: UID,
-        name: String,          // e.g. "rahul"
-        full_id: String,       // e.g. "rahul@zbx"
+        pay_id: String,        // short ID  e.g. "rahul"
+        full_id: String,       // full ID   e.g. "rahul@zbx"
+        display_name: String,  // real name e.g. "Rahul Kumar"  ← NEW, required
         owner: address,
         created_epoch: u64,
     }
 
     // ── Error codes ──
-    const E_NAME_EMPTY:         u64 = 1;
-    const E_NAME_TAKEN:         u64 = 2;
-    const E_ALREADY_REGISTERED: u64 = 3;
-    const E_INVALID_CHARS:      u64 = 4;
-    const E_PAY_ID_NOT_FOUND:   u64 = 5;
+    const E_NAME_EMPTY:         u64 = 1;  // pay_id empty
+    const E_NAME_TAKEN:         u64 = 2;  // duplicate pay_id
+    const E_ALREADY_REGISTERED: u64 = 3;  // address already has ID
+    const E_INVALID_CHARS:      u64 = 4;  // bad chars in pay_id
+    const E_PAY_ID_NOT_FOUND:   u64 = 5;  // recipient not found
+    const E_DISPLAY_NAME_EMPTY: u64 = 6;  // display_name missing ← NEW
 
-    // ── Init: registry ek bar create hota hai (deployer ke paas) ──
+    // ── Init: registry ek bar create hota hai ──
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PayIdRegistry {
             id: object::new(ctx),
@@ -434,66 +436,71 @@ const PAY_ID_CODE = `module zebvix::pay_id {
         });
     }
 
-    // ── Register: ek address sirf ek baar register kar sakta hai ──
+    // ── Register: DONO fields mandatory ──
+    // pay_id      = short unique ID   (e.g. b"rahul")        → becomes rahul@zbx
+    // display_name = real full name   (e.g. b"Rahul Kumar")  → stored on-chain
     public fun register_pay_id(
         registry: &mut PayIdRegistry,
-        name: vector<u8>,          // e.g. b"rahul"
+        pay_id:       vector<u8>,   // e.g. b"rahul"        — unique, alphanumeric
+        display_name: vector<u8>,   // e.g. b"Rahul Kumar"  — full name, required
         ctx: &mut TxContext
     ) {
-        let sender = tx_context::sender(ctx);
-        let name_str = string::utf8(name);
+        let sender    = tx_context::sender(ctx);
+        let id_str    = string::utf8(pay_id);
+        let dname_str = string::utf8(display_name);
 
-        // Validations
-        assert!(string::length(&name_str) > 0, E_NAME_EMPTY);
-        assert!(!table::contains(&registry.addr_to_name, sender), E_ALREADY_REGISTERED);
-        assert!(!table::contains(&registry.name_to_addr, name_str), E_NAME_TAKEN);
+        // ── Validations ──
+        assert!(string::length(&id_str)    > 0, E_NAME_EMPTY);         // ID must not be empty
+        assert!(string::length(&dname_str) > 0, E_DISPLAY_NAME_EMPTY); // name must not be empty
+        assert!(!table::contains(&registry.addr_to_name, sender),  E_ALREADY_REGISTERED);
+        assert!(!table::contains(&registry.name_to_addr, id_str),  E_NAME_TAKEN);
 
-        // Full ID = name + "@zbx"
-        let full = string::utf8(b"@zbx");
-        string::append(&mut full, name_str);  // "rahul@zbx"
+        // ── Build full ID: "rahul" + "@zbx" = "rahul@zbx" ──
+        let mut full_id = id_str;
+        string::append_utf8(&mut full_id, b"@zbx");
 
-        // Register in both maps
-        table::add(&mut registry.name_to_addr, name_str, sender);
-        table::add(&mut registry.addr_to_name, sender, name_str);
+        // ── Register in bidirectional maps ──
+        table::add(&mut registry.name_to_addr, id_str,  sender);
+        table::add(&mut registry.addr_to_name, sender,  id_str);
 
-        // Mint PayId object to sender — permanently bound, no delete/transfer
+        // ── Mint immutable PayId object → sender (permanently bound) ──
         transfer::transfer(PayId {
             id: object::new(ctx),
-            name: name_str,
-            full_id: full,
+            pay_id: id_str,
+            full_id,
+            display_name: dname_str,
             owner: sender,
             created_epoch: tx_context::epoch(ctx),
         }, sender);
     }
 
-    // ── Resolve: naam se address lookup ──
+    // ── Resolve: pay_id naam se wallet address lo ──
     public fun resolve_pay_id(
         registry: &PayIdRegistry,
-        name: vector<u8>,
+        pay_id: vector<u8>,
     ): address {
-        let name_str = string::utf8(name);
-        assert!(table::contains(&registry.name_to_addr, name_str), E_PAY_ID_NOT_FOUND);
-        *table::borrow(&registry.name_to_addr, name_str)
+        let id_str = string::utf8(pay_id);
+        assert!(table::contains(&registry.name_to_addr, id_str), E_PAY_ID_NOT_FOUND);
+        *table::borrow(&registry.name_to_addr, id_str)
     }
 
-    // ── Transfer: naam se seedha coin bhejo (ZBX ya koi bhi token) ──
+    // ── Transfer: pay_id se seedha coin/token bhejo ──
     public fun transfer_to_pay_id<T>(
         registry: &PayIdRegistry,
-        name: vector<u8>,   // recipient ka naam, e.g. b"rahul"
+        pay_id: vector<u8>,   // recipient ka pay_id, e.g. b"rahul"
         coin: Coin<T>,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
-        let recipient = resolve_pay_id(registry, name);
+        let recipient = resolve_pay_id(registry, pay_id);
         sui::transfer::public_transfer(coin, recipient);
     }
 
-    // ── View: kya naam available hai? ──
-    public fun is_name_available(
-        registry: &PayIdRegistry,
-        name: vector<u8>,
-    ): bool {
-        !table::contains(&registry.name_to_addr, string::utf8(name))
+    // ── View helpers ──
+    public fun is_name_available(registry: &PayIdRegistry, pay_id: vector<u8>): bool {
+        !table::contains(&registry.name_to_addr, string::utf8(pay_id))
     }
+    public fun get_display_name(pay_id_obj: &PayId): &String { &pay_id_obj.display_name }
+    public fun get_full_id(pay_id_obj: &PayId): &String      { &pay_id_obj.full_id }
 }`;
 
 const WEB3_RPC = `// JavaScript / TypeScript — Zebvix Web3 SDK
@@ -785,14 +792,48 @@ export default function FabricLayer() {
 
           {/* ZBX Pay ID */}
           <Section icon={AtSign} title="ZBX Pay ID — UPI-style Human Readable Address" color="border-violet-500/30 bg-violet-500/3" badge="name@zbx">
+
+            {/* Complete flow card */}
+            <div className="rounded-xl border border-violet-500/30 bg-violet-500/8 p-4 mb-4">
+              <div className="text-xs font-semibold text-violet-300 mb-3">Complete Registration Flow:</div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-violet-500/30 text-violet-300 text-xs flex items-center justify-center font-bold shrink-0">1</span>
+                  <div className="text-sm">
+                    <span className="text-foreground font-medium">Pay ID</span>
+                    <span className="text-muted-foreground"> — unique short identifier (alphanumeric)</span>
+                    <code className="block mt-1 text-xs bg-muted/30 px-3 py-1.5 rounded font-mono text-violet-300">rahul</code>
+                    <span className="text-xs text-muted-foreground">→ automatically becomes <code className="font-mono text-violet-400">rahul@zbx</code></span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-violet-500/30 text-violet-300 text-xs flex items-center justify-center font-bold shrink-0">2</span>
+                  <div className="text-sm">
+                    <span className="text-foreground font-medium">Display Name</span>
+                    <span className="text-muted-foreground"> — real full name (mandatory, stored on-chain)</span>
+                    <code className="block mt-1 text-xs bg-muted/30 px-3 py-1.5 rounded font-mono text-green-300">Rahul Kumar</code>
+                    <span className="text-xs text-red-400">← bina iske ID register nahi hogi — abort E_DISPLAY_NAME_EMPTY</span>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted/20 border border-border px-4 py-3 mt-2">
+                  <div className="text-xs text-muted-foreground mb-1">On-chain result:</div>
+                  <div className="flex flex-wrap gap-3 text-xs font-mono">
+                    <span><span className="text-muted-foreground">pay_id:</span> <span className="text-violet-400">rahul@zbx</span></span>
+                    <span><span className="text-muted-foreground">display_name:</span> <span className="text-green-400">Rahul Kumar</span></span>
+                    <span><span className="text-muted-foreground">owner:</span> <span className="text-orange-400">0xABC...123</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs mb-3">
               {[
-                { k: "Format", v: "name@zbx" },
+                { k: "Pay ID format", v: "name@zbx" },
+                { k: "Display Name", v: "✅ Mandatory" },
                 { k: "Per address", v: "Sirf 1 ID" },
                 { k: "Delete/Edit", v: "❌ Never" },
                 { k: "Unique", v: "✅ Global" },
                 { k: "Transfer via ID", v: "ZBX + Tokens" },
-                { k: "Name required", v: "Mandatory" },
               ].map(r => (
                 <div key={r.k} className="rounded-lg bg-muted/20 p-3 border border-border/50">
                   <div className="text-muted-foreground">{r.k}</div>
@@ -801,12 +842,21 @@ export default function FabricLayer() {
               ))}
             </div>
 
-            {/* Example IDs */}
-            <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 p-3 mb-3 space-y-2">
-              <div className="text-xs font-semibold text-violet-300 mb-2">Example Pay IDs:</div>
-              <div className="flex flex-wrap gap-2">
-                {["rahul@zbx", "zebvix_tech@zbx", "alice123@zbx", "validator1@zbx"].map(id => (
-                  <code key={id} className="text-xs bg-violet-500/20 text-violet-200 px-2.5 py-1 rounded-full font-mono">{id}</code>
+            {/* Example IDs with full names */}
+            <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 p-3 mb-3">
+              <div className="text-xs font-semibold text-violet-300 mb-2">Example Registered IDs:</div>
+              <div className="space-y-2">
+                {[
+                  { id: "rahul@zbx",        name: "Rahul Kumar" },
+                  { id: "zebvix_tech@zbx",  name: "Zebvix Technologies" },
+                  { id: "alice123@zbx",     name: "Alice Sharma" },
+                  { id: "validator1@zbx",   name: "Node Operator One" },
+                ].map(ex => (
+                  <div key={ex.id} className="flex items-center gap-3 text-xs">
+                    <code className="bg-violet-500/20 text-violet-200 px-2.5 py-1 rounded-full font-mono shrink-0">{ex.id}</code>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="text-green-300 font-medium">{ex.name}</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -814,10 +864,11 @@ export default function FabricLayer() {
             {/* Rules box */}
             <div className="rounded-lg bg-red-500/5 border border-red-500/20 p-3 mb-3 space-y-1 text-xs">
               <div className="text-xs font-semibold text-red-400 mb-1">Hard Rules (chain level enforce):</div>
-              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>Name ke bina ID nahi banega — empty string = abort</span></div>
-              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>Ek address = sirf ek Pay ID — dusra try karo = transaction fail</span></div>
-              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>Same naam kisi aur ne liya = abort — globally unique</span></div>
-              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>PayId object: <code className="font-mono">has key</code> only — koi <code className="font-mono">store</code> nahi → transfer/delete permanently blocked</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span><strong className="text-foreground">Pay ID empty</strong> = abort E_NAME_EMPTY</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span><strong className="text-foreground">Display Name empty</strong> = abort E_DISPLAY_NAME_EMPTY — naam mandatory hai</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>Ek address = sirf ek Pay ID — dusra try = abort E_ALREADY_REGISTERED</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>Same pay_id kisi aur ne liya = abort E_NAME_TAKEN — globally unique</span></div>
+              <div className="flex gap-2 text-muted-foreground"><span className="text-red-400">•</span><span>PayId: <code className="font-mono">has key</code> only — transfer/delete permanently blocked at VM level</span></div>
             </div>
 
             <CodeBlock code={PAY_ID_CODE} />
@@ -825,24 +876,33 @@ export default function FabricLayer() {
             {/* JS usage */}
             <div className="mt-3">
               <p className="text-xs text-muted-foreground mb-2 font-semibold">SDK se use karo (TypeScript):</p>
-              <CodeBlock code={`// Pay ID se coin bhejo
+              <CodeBlock code={`// ── Step 1: Register Pay ID (dono fields mandatory) ──
 const txb = new TransactionBlock();
 txb.moveCall({
+  target: '0xPKG::pay_id::register_pay_id',
+  arguments: [
+    txb.object(REGISTRY_ID),            // shared PayIdRegistry
+    txb.pure(Array.from(new TextEncoder().encode('rahul'))),        // pay_id
+    txb.pure(Array.from(new TextEncoder().encode('Rahul Kumar'))),  // display_name ← required
+  ],
+});
+// Result: rahul@zbx registered, "Rahul Kumar" stored on-chain permanently
+
+// ── Step 2: Send ZBX to someone's Pay ID ──
+const sendTxb = new TransactionBlock();
+sendTxb.moveCall({
   target: '0xPKG::pay_id::transfer_to_pay_id',
   typeArguments: ['0x2::zbx::ZBX'],
   arguments: [
-    txb.object(REGISTRY_ID),     // shared PayIdRegistry object
-    txb.pure(b'rahul'),          // recipient ka naam
-    txb.object(coinObjectId),    // coin to send
+    sendTxb.object(REGISTRY_ID),
+    sendTxb.pure(Array.from(new TextEncoder().encode('rahul'))), // recipient pay_id
+    sendTxb.object(coinObjectId),
   ],
 });
-await client.signAndExecuteTransactionBlock({ signer, transactionBlock: txb });
 
-// Check naam available hai?
-const available = await client.devInspectTransactionBlock({
-  target: '0xPKG::pay_id::is_name_available',
-  arguments: [REGISTRY_ID, b'rahul'],
-});`} lang="typescript" />
+// ── Step 3: Lookup — naam available hai? ──
+// devInspect: is_name_available(registry, b"rahul")
+// → true if free, false if taken`} lang="typescript" />
             </div>
           </Section>
 
