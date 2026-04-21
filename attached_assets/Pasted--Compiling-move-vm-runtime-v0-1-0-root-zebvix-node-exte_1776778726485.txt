@@ -1,0 +1,80 @@
+ Compiling move-vm-runtime v0.1.0 (/root/zebvix-node/external-crates/move/crates/move-vm-runtime)
+   Compiling sui-open-rpc v1.69.2 (/root/zebvix-node/crates/sui-open-rpc)
+warning: unused import: `PartialVMResult`
+ --> external-crates/move/crates/move-vm-runtime/src/shared/linkage_context.rs:7:24
+  |
+7 |     errors::{Location, PartialVMResult, VMResult},
+  |                        ^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `move_core_types::language_storage::TypeTag`
+  --> external-crates/move/crates/move-vm-runtime/src/shared/linkage_context.rs:10:5
+   |
+10 | use move_core_types::language_storage::TypeTag;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `InternedDisplay`, `dispatch_tables::VMDispatchTables`, and `self as values`
+  --> external-crates/move/crates/move-vm-runtime/src/execution/interpreter/state.rs:7:9
+   |
+ 7 |         dispatch_tables::VMDispatchTables,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+12 |         values::values_impl::{self as values, VMValueCast, Value},
+   |                               ^^^^^^^^^^^^^^
+13 |     },
+14 |     jit::execution::ast::{Function, InternedDisplay, Type},
+   |                                     ^^^^^^^^^^^^^^^
+
+warning: unused import: `fmt::Write`
+  --> external-crates/move/crates/move-vm-runtime/src/execution/interpreter/state.rs:23:11
+   |
+23 | use std::{fmt::Write, sync::Arc};
+   |           ^^^^^^^^^^
+
+warning: unused import: `fmt::Write`
+  --> external-crates/move/crates/move-vm-runtime/src/natives/functions.rs:39:5
+   |
+39 |     fmt::Write,
+   |     ^^^^^^^^^^
+
+warning: field `owner` is never read
+   --> external-crates/move/crates/move-vm-runtime/src/jit/execution/ast.rs:260:9
+    |
+258 | pub(crate) struct FieldInstantiation {
+    |                   ------------------ field in this struct
+259 |     pub offset: usize,
+260 |     pub owner: VirtualTableKey,
+    |         ^^^^^
+    |
+    = note: `FieldInstantiation` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: trait `InternedDisplay` is never used
+    --> external-crates/move/crates/move-vm-runtime/src/jit/execution/ast.rs:1625:11
+     |
+1625 | pub trait InternedDisplay<B: std::fmt::Write> {
+     |           ^^^^^^^^^^^^^^^
+
+warning: method `iter` is never used
+   --> external-crates/move/crates/move-vm-runtime/src/execution/interpreter/locals.rs:177:19
+    |
+176 | impl StackFrame {
+    | --------------- method in this implementation
+177 |     pub(crate) fn iter(&self) -> std::slice::Iter<'_, MemBox<Value>> {
+    |                   ^^^^
+
+warning: field `state` is never read
+   --> external-crates/move/crates/move-vm-runtime/src/natives/functions.rs:214:5
+    |
+211 | pub struct NativeContext<'a, 'b, 'c> {
+    |            ------------- field in this struct
+...
+214 |     state: Option<&'a MachineState>,
+    |     ^^^^^
+
+warning: `move-vm-runtime` (lib) generated 9 warnings (run `cargo fix --lib -p move-vm-runtime` to apply 5 suggestions)
+   Compiling jsonrpsee v0.24.9
+   Compiling sui-framework-snapshot v1.69.2 (/root/zebvix-node/crates/sui-framework-snapshot)
+   Compiling move-stdlib-natives-v3 v0.1.1 (/root/zebvix-node/external-crates/move/move-execution/v3/crates/move-stdlib-natives)
+   Compiling move-stdlib-natives-v1 v0.1.1 
