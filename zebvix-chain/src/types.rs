@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
 use std::fmt;
 
 pub const ADDRESS_LEN: usize = 20;
@@ -78,6 +79,7 @@ pub struct SignedTx {
     /// Compressed ed25519 public key of sender (32 bytes).
     pub pubkey: [u8; 32],
     /// Ed25519 signature (64 bytes).
+    #[serde(with = "BigArray")]
     pub signature: [u8; 64],
 }
 
@@ -96,6 +98,7 @@ pub struct Block {
     pub header: BlockHeader,
     pub txs: Vec<SignedTx>,
     /// Proposer signature over header bytes.
+    #[serde(with = "BigArray")]
     pub signature: [u8; 64],
 }
 
