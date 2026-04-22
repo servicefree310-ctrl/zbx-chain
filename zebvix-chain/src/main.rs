@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use state::State;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokenomics::{CHAIN_ID, TOTAL_SUPPLY_WEI, WEI_PER_ZBX};
+use tokenomics::{CHAIN_ID, FOUNDER_PREMINE_WEI, TOTAL_SUPPLY_WEI, WEI_PER_ZBX};
 use types::{Address, TxBody};
 
 #[derive(Parser)]
@@ -39,9 +39,13 @@ enum Cmd {
         /// Validator key file from `keygen --out`. Becomes the founder/proposer.
         #[arg(long)]
         validator_key: PathBuf,
-        /// Pre-mine allocation: `addr:amount_zbx` (repeatable). Default = none.
+        /// Pre-mine allocation: `addr:amount_zbx` (repeatable).
+        /// If empty, the validator address gets the default founder pre-mine (2,000,000 ZBX).
         #[arg(long)]
         alloc: Vec<String>,
+        /// Disable the default 2M ZBX founder pre-mine when no --alloc is given.
+        #[arg(long)]
+        no_default_premine: bool,
     },
     /// Start the node (block producer + JSON-RPC).
     Start {
@@ -141,7 +145,7 @@ fn cmd_keygen(out: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-fn cmd_init(home: PathBuf, validator_key: PathBuf, alloc: Vec<String>) -> Result<()> {
+fn cmd_init(home: PathBuf, validator_key: PathBuf, alloc: Vec<String>, no_default_premine: bool) -> Result<()> {
     let (_, pk) = read_keyfile(&validator_key)?;
     let validator_addr = address_from_pubkey(&pk);
 
@@ -158,6 +162,13 @@ fn cmd_init(home: PathBuf, validator_key: PathBuf, alloc: Vec<String>) -> Result
         let wei = parse_zbx_amount(amt.trim())?;
         alloc_pairs.push((address, wei));
         alloc_serialized.push((address.to_hex(), wei.to_string()));
+    }
+
+    // Auto founder premine if no allocations specified
+    if alloc_pairs.is_empty() && !no_default_premine {
+        alloc_pairs.push((validator_addr, FOUNDER_PREMINE_WEI));
+        alloc_serialized.push((validator_addr.to_hex(), FOUNDER_PREMINE_WEI.to_string()));
+        println!("ℹ️  Default founder pre-mine: 2,000,000 ZBX → {}", validator_addr);
     }
 
     // Init state with allocations
@@ -292,7 +303,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
         Cmd::Keygen { out } => cmd_keygen(out),
-        Cmd::Init { home, validator_key, alloc } => cmd_init(home, validator_key, alloc),
+        Cmd::Init { home, validator_key, alloc, no_default_premine } => cmd_init(home, validator_key, alloc, no_default_premine),
         Cmd::Start { home, rpc } => cmd_start(home, rpc).await,
         Cmd::Send { from_key, to, amount, fee, rpc } => cmd_send(from_key, to, amount, fee, rpc).await,
     }
