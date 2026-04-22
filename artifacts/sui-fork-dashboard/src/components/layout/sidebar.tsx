@@ -24,7 +24,9 @@ import {
   Calculator,
   Layers,
   FileCode2,
-  Download
+  Download,
+  Code2,
+  Sparkles
 } from "lucide-react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { Progress } from "@/components/ui/progress";
@@ -58,6 +60,8 @@ const ADDON_NAV = [
   { href: "/dex", label: "DEX / Swap", icon: ArrowUpDown },
   { href: "/fabric-layer", label: "Zebvix Fabric Layer", icon: Layers },
   { href: "/code-review", label: "Code Review — What Changed", icon: FileCode2 },
+  { href: "/chain-code", label: "Chain Source Code", icon: Code2 },
+  { href: "/chain-status", label: "Chain Features", icon: Sparkles },
   { href: "/downloads", label: "Downloads", icon: Download },
 ];
 

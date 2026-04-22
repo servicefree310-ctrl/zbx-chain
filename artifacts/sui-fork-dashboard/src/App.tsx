@@ -30,6 +30,8 @@ import EconomicDesign from "@/pages/economic-design";
 import FabricLayer from "@/pages/fabric-layer";
 import CodeReview from "@/pages/code-review";
 import Downloads from "@/pages/downloads";
+import ChainCode from "@/pages/chain-code";
+import ChainStatus from "@/pages/chain-status";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +63,8 @@ function Router() {
         <Route path="/fabric-layer" component={FabricLayer} />
         <Route path="/code-review" component={CodeReview} />
         <Route path="/downloads" component={Downloads} />
+        <Route path="/chain-code" component={ChainCode} />
+        <Route path="/chain-status" component={ChainStatus} />
         <Route component={NotFound} />
       </Switch>
     </Shell>
